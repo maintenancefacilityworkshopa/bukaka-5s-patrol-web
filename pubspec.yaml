@@ -1,0 +1,115 @@
+name: bukaka_5s_patrol
+description: "5S Patrol System By Workshop A"
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  pdf: ^3.10.8
+  printing: ^5.13.0
+  # =========================
+  # Flutter & UI Basic
+  # =========================
+  cupertino_icons: ^1.0.8
+  flutter_svg: ^2.2.0
+  shimmer: ^3.0.0
+
+  # =========================
+  # State Management
+  # =========================
+  flutter_bloc: ^9.1.1
+  equatable: ^2.0.7
+
+  # =========================
+  # Routing & Injection
+  # =========================
+  go_router: ^16.2.1
+  get_it: ^8.2.0
+
+  # =========================
+  # Backend & Env
+  # =========================
+  supabase_flutter: ^2.10.2
+  flutter_dotenv: ^5.2.1
+  flutter_secure_storage: ^9.2.4
+
+  # =========================
+  # Network
+  # =========================
+  dio: ^5.9.0
+  internet_connection_checker_plus: ^2.7.2
+
+  # =========================
+  # Grafik & Animasi
+  # =========================
+  fl_chart: ^0.69.0
+
+  # =========================
+  # Model / Serialization
+  # =========================
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+
+  # =========================
+  # Camera, Image & Location
+  # =========================
+  camera: ^0.11.2
+  image_picker: ^1.2.3
+  url_launcher: ^6.3.0
+  cached_network_image: ^3.4.1
+  geolocator: ^14.0.2
+
+  # =========================
+  # Permission & Utilities
+  # =========================
+  permission_handler: ^12.0.1
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  logger: ^2.6.1
+  provider: ^6.1.2
+  
+  # =========================
+  # PDF & Excel
+  # =========================
+  excel: ^4.0.6
+  file_picker: ^10.0.0
+  syncfusion_flutter_pdf: ^31.1.20
+  syncfusion_flutter_xlsio: ^31.1.20
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  # Code Generator
+  build_runner: ^2.7.1
+  freezed: ^3.2.3
+  json_serializable: ^6.11.1
+
+  # App Assets
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
+
+flutter_icons:
+  image_path: "assets/icons/icon_final5s.png"
+  android: true
+  ios: true
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/logos/
+
+dependency_overrides:
+  archive: 3.3.7
+  flutter_plugin_android_lifecycle: ^2.0.24
