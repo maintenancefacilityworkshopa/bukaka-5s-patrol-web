@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../activity/presentation/screens/aktivitas_pengguna_screen.dart';
-import '../../admin/patrol_schedule/presentation/screens/patrol_schedule_screen.dart';
 import '../../admin/user_management/presentation/screens/user_management_screen.dart';
 import '../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../patrol/presentation/screens/buat_patrol_screen.dart';
@@ -35,7 +34,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
 
   void _onFabPressed() {
     if (widget.isAdmin) {
-      // Role Admin: Menampilkan pilihan Kelola Pengguna atau Kelola Schedule
+      // Role Admin: Menampilkan pilihan Kelola Pengguna atau Buat Patrol
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -80,14 +79,14 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       ),
       const SizedBox(width: 36),
       _buildFloatingOption(
-        title: 'KELOLA SCHEDULE',
-        icon: Icons.edit_calendar_rounded,
+        title: 'BUAT PATROL',
+        icon: Icons.add_a_photo_rounded,
         onTap: () {
           Navigator.pop(context);
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const PatrolScheduleScreen(),
+              builder: (context) => const BuatPatrolScreen(),
             ),
           );
         },

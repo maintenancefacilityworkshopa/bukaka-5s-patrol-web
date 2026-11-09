@@ -31,7 +31,7 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
   bool _isActive = true;
   bool _isLoading = false;
 
-  static const primaryBlue = Color(0xFF004085);
+  static const primaryBlue = Color(0xFF2563EB);
 
   @override
   void initState() {
@@ -72,6 +72,13 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
   }
 
   Future<void> _handleSave() async {
+    if (_namaController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama dan Email wajib diisi!'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -80,12 +87,12 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
     try {
       final userPayload = UserModel(
         id: widget.user?.id ?? '',
-        fullName: _namaController.text,
-        email: _emailController.text,
-        nik: _nikController.text,
+        fullName: _namaController.text.trim(),
+        email: _emailController.text.trim(),
+        nik: _nikController.text.trim(),
         role: UserModel.roleToEnum(_selectedRoleDisplay),
         departmentId: _selectedDepartmentId,
-        phoneNumber: _hpController.text,
+        phoneNumber: _hpController.text.trim(),
         isActive: _isActive,
       );
 
@@ -93,7 +100,7 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
       if (mounted) navigator.pop();
     } catch (e) {
       if (mounted) {
-        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -118,7 +125,7 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.user == null ? 'Tambah Pengguna' : 'Tambah / Edit Pengguna',
+            widget.user == null ? 'Tambah Pengguna' : 'Edit Pengguna',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 12),
@@ -174,7 +181,7 @@ class _AddEditUserDialogState extends State<AddEditUserDialog> with SingleTicker
                                       value: _selectedRoleDisplay,
                                       isExpanded: true,
                                       style: const TextStyle(fontSize: 12, color: Colors.black87),
-                                      items: ['Admin', 'Staff Ahli', 'Intern'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                                      items: ['Admin', 'PIC Area', 'Staff Ahli', 'Staff Internship'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                                       onChanged: (v) {
                                         if (v != null) setState(() => _selectedRoleDisplay = v);
                                       },

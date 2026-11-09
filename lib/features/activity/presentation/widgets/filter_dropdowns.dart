@@ -28,8 +28,8 @@ class FilterDropdowns extends StatelessWidget {
       child: Row(
         children: [
           _buildTabItem(0, 'Semua', Icons.grid_view_rounded),
-          _buildTabItem(1, 'Selesai', Icons.check_circle_outline_rounded),
-          _buildTabItem(2, 'Schedule', Icons.calendar_today_rounded),
+          _buildTabItem(1, 'In Progress', Icons.pending_actions_rounded),
+          _buildTabItem(2, 'Selesai', Icons.check_circle_outline_rounded),
         ],
       ),
     );

@@ -4,43 +4,71 @@ import '../models/notification_model.dart';
 class NotificationService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Stream Data Notifikasi Real-time
+  /// Stream Notifikasi Real-time dari Supabase (Filter < 2 Bulan & Hak Akses User)
   Stream<List<NotificationModel>> streamNotifications({required bool isAdmin}) {
     final currentUserId = _supabase.auth.currentUser?.id;
+    final twoMonthsAgo = DateTime.now().subtract(const Duration(days: 60));
 
     return _supabase
         .from('notifications')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .map((data) {
-          return data
+        .map((dataList) {
+          return dataList
               .map((item) => NotificationModel.fromMap(item))
               .where((item) {
-                // Jika admin: tampilkan semua atau yang ditujukan ke admin
+                // Filter 1: Hapus tampilan visual notifikasi yang berumur lebih dari 2 bulan
+                if (item.createdAt.isBefore(twoMonthsAgo)) {
+                  return false;
+                }
+
+                // Filter 2: Saring Hak Akses Berdasarkan User / Admin
                 if (isAdmin) return true;
-                // Jika user biasa: tampilkan notifikasi publik/sistem atau yang spesifik user tersebut
                 return item.userId == null || item.userId == currentUserId;
               })
               .toList();
         });
   }
 
-  // Tandai Notifikasi Telah Dibaca
+  /// Tandai Notifikasi Spesifik sebagai Dibaca
   Future<void> markAsRead(String notificationId) async {
-    await _supabase
-        .from('notifications')
-        .update({'is_read': true})
-        .eq('id', notificationId);
-  }
-
-  // Tandai Semua Notifikasi Dibaca
-  Future<void> markAllAsRead() async {
-    final currentUserId = _supabase.auth.currentUser?.id;
-    if (currentUserId != null) {
+    try {
       await _supabase
           .from('notifications')
           .update({'is_read': true})
-          .eq('user_id', currentUserId);
+          .eq('id', notificationId);
+    } catch (_) {}
+  }
+
+  /// Tandai Semua Notifikasi Milik Pengguna Saat Ini sebagai Dibaca
+  Future<void> markAllAsRead() async {
+    final currentUserId = _supabase.auth.currentUser?.id;
+    if (currentUserId != null) {
+      try {
+        await _supabase
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('user_id', currentUserId);
+      } catch (_) {}
     }
+  }
+
+  /// Kirim Notifikasi Baru ke Database
+  Future<void> sendNotification({
+    String? userId,
+    required String title,
+    required String message,
+    required String type,
+    String? referenceId,
+  }) async {
+    await _supabase.from('notifications').insert({
+      if (userId != null) 'user_id': userId,
+      'title': title,
+      'message': message,
+      'type': type,
+      if (referenceId != null) 'reference_id': referenceId,
+      'is_read': false,
+      'created_at': DateTime.now().toIso8601String(),
+    });
   }
 }

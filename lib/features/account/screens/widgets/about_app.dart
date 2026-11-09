@@ -90,11 +90,11 @@ class AboutAppScreen extends StatelessWidget {
                 ),
                 child: const Column(
                   children: [
-                    _InfoRow(label: 'Tanggal Dibuat', value: '15 Januari 2026'),
+                    _InfoRow(label: 'Tanggal Dibuat', value: '05 Agustus 2026'),
                     Divider(height: 24, color: Color(0xFFF1F5F9)),
-                    _InfoRow(label: 'Diterbitkan', value: '01 September 2026'),
+                    _InfoRow(label: 'Diterbitkan', value: '06 November 2026'),
                     Divider(height: 24, color: Color(0xFFF1F5F9)),
-                    _InfoRow(label: 'Pengembang', value: 'PT Bukaka Teknik Utama Tbk'),
+                    _InfoRow(label: 'Pengembang', value: 'Maintenance & Facility Workshop A'),
                   ],
                 ),
               ),

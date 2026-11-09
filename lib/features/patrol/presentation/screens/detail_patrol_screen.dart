@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../patrol/presentation/screens/buat_patrol_screen.dart';
+import 'buat_patrol_screen.dart';
 
 class DetailPatrolScreen extends StatefulWidget {
   final Map<String, dynamic> patrolData;
@@ -59,18 +59,16 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
   }
 
   Future<void> _fetchFreshData() async {
-    final patrolId = _currentData['kode_patrol'] ??
-        _currentData['kode'] ??
-        _currentData['id'];
-    if (patrolId == null) return;
+    final recordId = _currentData['id'];
+    final kodePatrol = _currentData['kode_patrol'] ?? _currentData['kode'];
+    if (recordId == null && kodePatrol == null) return;
 
     setState(() => _isLoadingLatest = true);
     try {
-      final response = await _supabase
-          .from('patrols')
-          .select()
-          .eq('kode_patrol', patrolId)
-          .maybeSingle();
+      final query = _supabase.from('patrols').select();
+      final response = recordId != null
+          ? await query.eq('id', recordId).maybeSingle()
+          : await query.eq('kode_patrol', kodePatrol).maybeSingle();
 
       if (response != null && mounted) {
         setState(() {
@@ -156,9 +154,9 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
     if (parsed == null) return rawDate;
 
     try {
-      return DateFormat('dd MMMM yyyy', 'id_ID').format(parsed);
+      return DateFormat('dd MMMM yyyy', 'id_ID').format(parsed.toLocal());
     } catch (_) {
-      return DateFormat('dd MMMM yyyy').format(parsed);
+      return DateFormat('dd MMMM yyyy').format(parsed.toLocal());
     }
   }
 
@@ -188,9 +186,9 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
   }
 
   Color _getStatusBgColor(String status) {
-    switch (status.toUpperCase()) {
+    final cleanStatus = status.replaceAll('_', ' ').toUpperCase();
+    switch (cleanStatus) {
       case 'IN PROGRESS':
-      case 'IN_PROGRESS':
         return const Color(0xFFFEF0C7);
       case 'CLOSED':
         return const Color(0xFFD1FADF);
@@ -202,9 +200,9 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
   }
 
   Color _getStatusTextColor(String status) {
-    switch (status.toUpperCase()) {
+    final cleanStatus = status.replaceAll('_', ' ').toUpperCase();
+    switch (cleanStatus) {
       case 'IN PROGRESS':
-      case 'IN_PROGRESS':
         return const Color(0xFFDC6803);
       case 'CLOSED':
         return const Color(0xFF12B76A);
@@ -219,34 +217,36 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF2563EB);
 
-    final status = (_currentData['status'] ?? 'OPEN').toString().toUpperCase();
+    final rawStatus = (_currentData['status'] ?? 'OPEN').toString();
+    final statusDisplay = rawStatus.replaceAll('_', ' ').toUpperCase();
+
     final patrolId = _currentData['kode_patrol'] ??
         _currentData['kode'] ??
         _currentData['id'] ??
         '-';
     final tanggal =
-        _formatTanggal(_currentData['tanggal'] ?? _currentData['created_at']);
+        _formatTanggal(_currentData['created_at'] ?? _currentData['tanggal']);
     final item5s = _currentData['item_5s'] ?? '-';
-    final judul = _currentData['judul'] ?? '-';
-    final inspektor = _currentData['nama_pembuat'] ??
+    final judul = _currentData['judul'] ?? _currentData['description'] ?? '-';
+    final inspektor = _currentData['name_maker'] ??
+        _currentData['nama_pembuat'] ??
         _currentData['pelapor_nama'] ??
-        _currentData['created_by_name'] ??
         'Pengguna';
     final lokasi = _currentData['lokasi'] ?? _currentData['location'] ?? '-';
-    final deskripsi = _currentData['deskripsi'] ?? '-';
-    final priorityTag =
-        _currentData['kelas_tingkatan'] ?? _currentData['priority'] ?? 'LOW';
+    final deskripsi = _currentData['description'] ??
+        _currentData['deskripsi'] ??
+        '-';
+    final priorityTag = _currentData['priority_level'] ??
+        _currentData['kelas_tingkatan'] ??
+        'LOW';
 
-    final rawFotoBefore = _currentData['foto_sebelum_url'] ??
-        _currentData['foto_sebelum'] ??
-        _currentData['foto_before'] ??
-        _currentData['foto_url'] ??
-        _currentData['image_before'];
+    final rawFotoBefore = _currentData['photo_before_url'] ??
+        _currentData['foto_sebelum_url'] ??
+        _currentData['foto_before'];
 
-    final rawFotoAfter = _currentData['foto_sesudah_url'] ??
-        _currentData['foto_sesudah'] ??
-        _currentData['foto_after'] ??
-        _currentData['image_after'];
+    final rawFotoAfter = _currentData['photo_after_url'] ??
+        _currentData['foto_sesudah_url'] ??
+        _currentData['foto_after'];
 
     final fotoBeforeUrl = _resolveImageUrl(rawFotoBefore);
     final fotoAfterUrl = _resolveImageUrl(rawFotoAfter);
@@ -302,13 +302,13 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: _getStatusBgColor(status),
+                                    color: _getStatusBgColor(rawStatus),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    status,
+                                    statusDisplay,
                                     style: TextStyle(
-                                      color: _getStatusTextColor(status),
+                                      color: _getStatusTextColor(rawStatus),
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -485,7 +485,6 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                     ),
             ),
 
-            // Bottom Action Bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -576,7 +575,6 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Failed to load image from: $imageUrl');
                   return _buildPlaceholder(
                     icon: Icons.broken_image_outlined,
                     text: 'Gagal memuat foto',

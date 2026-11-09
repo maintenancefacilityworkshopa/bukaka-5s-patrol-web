@@ -14,7 +14,6 @@ class RingkasanStatusCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Menentukan konteks periode (Mingguan vs Bulanan)
     final bool isSpecificMonth = currentFilter.month != 'ALL';
     final String periodText = isSpecificMonth ? 'Week' : 'Bulan';
     final String periodLabel = isSpecificMonth ? 'Minggu' : 'Bulan';
@@ -22,6 +21,7 @@ class RingkasanStatusCards extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           'Ringkasan Status',
@@ -31,53 +31,59 @@ class RingkasanStatusCards extends StatelessWidget {
             color: Color(0xFF475569),
           ),
         ),
-        const SizedBox(height: 12),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.45,
+        const SizedBox(height: 8), // Jarak rapat sama seperti centang (✓)
+        
+        // Baris 1: Rata-rata & Tertinggi
+        Row(
           children: [
-            // 1. Rata-rata per periode
-            _buildStatCard(
-              title: 'Rata-rata per $periodText',
-              value: stats.averagePerPeriod.toStringAsFixed(1).replaceAll('.', ','),
-              unit: 'Temuan',
-              icon: Icons.grid_view_rounded,
-              accentColor: const Color(0xFFF59E0B),
-              bgColor: const Color(0xFFFFFBEB),
+            Expanded(
+              child: _buildStatCard(
+                title: 'Rata-rata per $periodText',
+                value: stats.averagePerPeriod.toStringAsFixed(1).replaceAll('.', ','),
+                unit: 'Temuan',
+                icon: Icons.grid_view_rounded,
+                accentColor: const Color(0xFFF59E0B),
+                bgColor: const Color(0xFFFFFBEB),
+              ),
             ),
-            
-            // 2. Periode Tertinggi
-            _buildStatCard(
-              title: '$periodLabel Tertinggi',
-              value: stats.highestCount.toString(),
-              unit: 'Temuan (${stats.highestPeriod})',
-              icon: Icons.trending_up_rounded,
-              accentColor: const Color(0xFF16A34A),
-              bgColor: const Color(0xFFF0FDF4),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildStatCard(
+                title: '$periodLabel Tertinggi',
+                value: stats.highestCount.toString(),
+                unit: 'Temuan (${stats.highestPeriod})',
+                icon: Icons.trending_up_rounded,
+                accentColor: const Color(0xFF16A34A),
+                bgColor: const Color(0xFFF0FDF4),
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 8), // Jarak rapat antar kartu
 
-            // 3. Periode Terendah
-            _buildStatCard(
-              title: '$periodLabel Terendah',
-              value: stats.lowestCount.toString(),
-              unit: 'Temuan (${stats.lowestPeriod})',
-              icon: Icons.trending_down_rounded,
-              accentColor: const Color(0xFFDC2626),
-              bgColor: const Color(0xFFFEF2F2),
+        // Baris 2: Terendah & Total
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                title: '$periodLabel Terendah',
+                value: stats.lowestCount.toString(),
+                unit: 'Temuan (${stats.lowestPeriod})',
+                icon: Icons.trending_down_rounded,
+                accentColor: const Color(0xFFDC2626),
+                bgColor: const Color(0xFFFEF2F2),
+              ),
             ),
-
-            // 4. Total Temuan
-            _buildStatCard(
-              title: totalTitle,
-              value: stats.totalCount.toString(),
-              unit: 'Temuan',
-              icon: Icons.pie_chart_outline_rounded,
-              accentColor: const Color(0xFF0284C7),
-              bgColor: const Color(0xFFEFF6FF),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildStatCard(
+                title: totalTitle,
+                value: stats.totalCount.toString(),
+                unit: 'Temuan',
+                icon: Icons.pie_chart_outline_rounded,
+                accentColor: const Color(0xFF0284C7),
+                bgColor: const Color(0xFFEFF6FF),
+              ),
             ),
           ],
         ),
@@ -94,20 +100,21 @@ class RingkasanStatusCards extends StatelessWidget {
     required Color bgColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -115,11 +122,11 @@ class RingkasanStatusCards extends StatelessWidget {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(8),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: accentColor, size: 18),
+            child: Icon(icon, color: accentColor, size: 16),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             title,
             style: const TextStyle(
@@ -135,8 +142,8 @@ class RingkasanStatusCards extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               color: Color(0xFF0F172A),
             ),
           ),

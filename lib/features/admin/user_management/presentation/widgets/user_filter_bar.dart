@@ -20,10 +20,10 @@ class UserFilterBar extends StatelessWidget {
       children: [
         Expanded(
           child: Container(
-            height: 40,
+            height: 42,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: TextField(
@@ -32,7 +32,7 @@ class UserFilterBar extends StatelessWidget {
               decoration: const InputDecoration(
                 hintText: 'Cari nama, email, NIK...',
                 hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-                prefixIcon: Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
+                prefixIcon: Icon(Icons.search_rounded, size: 18, color: Color(0xFF94A3B8)),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
@@ -41,18 +41,19 @@ class UserFilterBar extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Container(
-          height: 40,
+          height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: selectedRole,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B)),
-              items: ['Semua Role', 'Admin', 'Staff Ahli', 'Intern'].map((role) {
+              style: const TextStyle(fontSize: 12, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF64748B)),
+              items: ['Semua Role', 'Admin', 'PIC Area', 'Staff Ahli', 'Staff Internship'].map((role) {
                 return DropdownMenuItem(value: role, child: Text(role));
               }).toList(),
               onChanged: (val) {

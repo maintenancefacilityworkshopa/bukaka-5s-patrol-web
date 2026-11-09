@@ -1,16 +1,16 @@
+// lib/features/activity/presentation/screens/aktivitas_pengguna_screen.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../../admin/patrol_schedule/presentation/screens/patrol_schedule_screen.dart';
 import '../../data/models/activity_log_model.dart';
 import '../../data/models/activity_stat_model.dart';
 import '../../data/models/completed_patrol_model.dart';
-import '../../data/models/schedule_item_model.dart';
 import '../../data/repositories/activity_repository.dart';
 import '../widgets/card_statistik_activity.dart';
 import '../widgets/filter_dropdowns.dart';
-import '../widgets/isi_schedule_filter.dart';
+import '../widgets/isi_in_progress_filter.dart';
 import '../widgets/isi_selesai_filter.dart';
 import '../widgets/isi_semua_filter.dart';
+import '../widgets/month_year_picker_dialog.dart';
+import '../../../patrol/presentation/screens/detail_patrol_screen.dart';
 
 class AktivitasPenggunaScreen extends StatefulWidget {
   const AktivitasPenggunaScreen({super.key});
@@ -24,16 +24,15 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
 
   int _selectedTab = 0;
   bool _isLoading = true;
-  bool _isAdmin = false;
 
-  String _selectedTimeFilter = 'Hari Ini';
-  DateTime? _customSelectedDate;
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
+  String _selectedTimeFilterText = 'Bulan Ini';
 
   ActivityStatModel _stats = ActivityStatModel.empty();
   List<ActivityLogModel> _logsToday = [];
   List<ActivityLogModel> _logsYesterday = [];
   List<CompletedPatrolModel> _completedPatrols = [];
-  List<ScheduleItemModel> _schedules = [];
 
   @override
   void initState() {
@@ -41,30 +40,31 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
     _loadActivityData();
   }
 
-  Future<void> _pickCustomDate() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _showMonthYearPicker() async {
+    final res = await showModalBottomSheet(
       context: context,
-      initialDate: _customSelectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF2563EB),
-              onPrimary: Colors.white,
-              onSurface: Color(0xFF0F172A),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MonthYearPickerDialog(
+        initialMonth: _selectedMonth,
+        initialYear: _selectedYear,
+      ),
     );
 
-    if (picked != null) {
+    if (res != null) {
       setState(() {
-        _customSelectedDate = picked;
-        _selectedTimeFilter = DateFormat('dd/MM/yy').format(picked);
+        _selectedMonth = res['month'] ?? 0;
+        _selectedYear = res['year'] ?? 0;
+
+        if (_selectedMonth == 0 && _selectedYear == 0) {
+          _selectedTimeFilterText = 'Semua Waktu';
+        } else if (_selectedMonth == 0) {
+          _selectedTimeFilterText = 'Tahun $_selectedYear';
+        } else if (_selectedYear == 0) {
+          _selectedTimeFilterText = 'Bulan $_selectedMonth';
+        } else {
+          _selectedTimeFilterText = 'Periode ($_selectedMonth/$_selectedYear)';
+        }
       });
       _loadActivityData();
     }
@@ -73,15 +73,16 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
   Future<void> _loadActivityData() async {
     setState(() => _isLoading = true);
     try {
-      final payload = await _repository.fetchActivityData(_customSelectedDate);
+      final payload = await _repository.fetchActivityData(
+        selectedMonth: _selectedMonth,
+        selectedYear: _selectedYear,
+      );
       if (mounted) {
         setState(() {
-          _isAdmin = payload.isAdmin;
           _stats = payload.stats;
           _logsToday = payload.logsToday;
           _logsYesterday = payload.logsYesterday;
           _completedPatrols = payload.completedPatrols;
-          _schedules = payload.schedules;
           _isLoading = false;
         });
       }
@@ -90,29 +91,40 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
     }
   }
 
-  void _navigateToCreateSchedule() {
+  void _navigateToDetail(dynamic patrolData) {
+    if (patrolData == null) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const PatrolScheduleScreen(),
+        builder: (context) => DetailPatrolScreen(patrolData: patrolData),
       ),
     ).then((_) => _loadActivityData());
   }
 
   @override
   Widget build(BuildContext context) {
+    // FILTER LOGS SESUAI DENGAN TAB IN PROGRESS
+    final List<ActivityLogModel> inProgressLogs = _logsToday.where((item) {
+      final st = item.status.toUpperCase();
+      return st == 'IN PROGRESS' ||
+          st == 'IN_PROGRESS' ||
+          st == 'PROSES' ||
+          st == 'OPEN' ||
+          st == 'PENDING';
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'Activity',
                       style: TextStyle(
@@ -148,18 +160,8 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                               selesai: _stats.selesai,
                               inProgress: _stats.inProgress,
                               open: _stats.open,
-                              selectedTimeFilter: _selectedTimeFilter,
-                              onSelectFilter: (value) {
-                                if (value == 'Pilih Tanggal...') {
-                                  _pickCustomDate();
-                                } else if (value != null) {
-                                  setState(() {
-                                    _selectedTimeFilter = value;
-                                    _customSelectedDate = null;
-                                  });
-                                  _loadActivityData();
-                                }
-                              },
+                              selectedTimeFilter: _selectedTimeFilterText,
+                              onTapFilter: _showMonthYearPicker,
                             ),
                             const SizedBox(height: 16),
                             FilterDropdowns(
@@ -169,20 +171,23 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
+
+                            // TAB SELEKSI
                             if (_selectedTab == 0)
                               IsiSemuaFilter(
                                 logsToday: _logsToday,
                                 logsYesterday: _logsYesterday,
+                                onItemTap: (data) => _navigateToDetail(data),
                               )
                             else if (_selectedTab == 1)
-                              IsiSelesaiFilter(
-                                completedPatrols: _completedPatrols,
+                              IsiInProgressFilter(
+                                inProgressLogs: inProgressLogs,
+                                onItemTap: (data) => _navigateToDetail(data),
                               )
                             else
-                              IsiScheduleFilter(
-                                isAdmin: _isAdmin,
-                                schedules: _schedules,
-                                onAddSchedule: _navigateToCreateSchedule,
+                              IsiSelesaiFilter(
+                                completedPatrols: _completedPatrols,
+                                onItemTap: (data) => _navigateToDetail(data),
                               ),
                             const SizedBox(height: 24),
                           ],

@@ -25,7 +25,6 @@ class _PatrolScreenState extends State<PatrolScreen> {
   String? _currentUserId;
   bool _isLoadingRole = true;
 
-  // Map lokal penampung cache profil pelapor agar tidak melakukan fetch ulang terus menerus
   final Map<String, String> _cachedProfiles = {};
 
   final List<String> _statusOptions = const [
@@ -127,7 +126,6 @@ class _PatrolScreenState extends State<PatrolScreen> {
     );
   }
 
-  /// Sinkronisasi profil tanpa memblokir/re-render UI utama secara langsung
   void _syncProfilesIfNeeded(List<Map<String, dynamic>> rawPatrols) {
     final missingUserIds = rawPatrols
         .map((e) => e['created_by']?.toString())
@@ -155,8 +153,8 @@ class _PatrolScreenState extends State<PatrolScreen> {
       final createdBy = patrol['created_by']?.toString();
       final updatedPatrol = Map<String, dynamic>.from(patrol);
       updatedPatrol['pelapor_nama'] = _cachedProfiles[createdBy] ??
-          patrol['pelapor_nama'] ??
-          patrol['created_by_name'] ??
+          patrol['name_maker'] ??
+          patrol['nama_pembuat'] ??
           'Pengguna';
       return updatedPatrol;
     }).toList();
@@ -171,17 +169,19 @@ class _PatrolScreenState extends State<PatrolScreen> {
     }
 
     if (_selectedLokasi != 'Semua Lokasi') {
-      list = list.where((item) => item['lokasi'] == _selectedLokasi).toList();
+      list = list.where((item) {
+        final lok = (item['lokasi'] ?? item['location'] ?? '').toString();
+        return lok == _selectedLokasi;
+      }).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((item) {
-        final lokasi = (item['lokasi'] ?? '').toString().toLowerCase();
+        final lokasi = (item['lokasi'] ?? item['location'] ?? '').toString().toLowerCase();
         final item5s = (item['item_5s'] ?? '').toString().toLowerCase();
-        final deskripsi = (item['deskripsi'] ?? '').toString().toLowerCase();
-        final kode =
-            (item['kode_patrol'] ?? item['kode'] ?? '').toString().toLowerCase();
+        final deskripsi = (item['description'] ?? item['deskripsi'] ?? '').toString().toLowerCase();
+        final kode = (item['kode_patrol'] ?? item['kode'] ?? '').toString().toLowerCase();
         final pelapor = (item['pelapor_nama'] ?? '').toString().toLowerCase();
         return lokasi.contains(q) ||
             item5s.contains(q) ||
@@ -200,8 +200,8 @@ class _PatrolScreenState extends State<PatrolScreen> {
       final dateB = DateTime.tryParse(b['created_at'] ?? b['tanggal'] ?? '') ??
           DateTime.now();
 
-      final lokasiA = (a['lokasi'] ?? '').toString().toLowerCase();
-      final lokasiB = (b['lokasi'] ?? '').toString().toLowerCase();
+      final lokasiA = (a['lokasi'] ?? a['location'] ?? '').toString().toLowerCase();
+      final lokasiB = (b['lokasi'] ?? b['location'] ?? '').toString().toLowerCase();
 
       switch (_selectedSort) {
         case SortOption.terbaru:
@@ -322,7 +322,6 @@ class _PatrolScreenState extends State<PatrolScreen> {
                         final rawList =
                             patrolModels.map((e) => e.toMap()).toList();
 
-                        // Ambil profil baru di latar belakang tanpa memblokir proses render UI
                         _syncProfilesIfNeeded(rawList);
 
                         final patrols = _processAndFilterData(rawList);

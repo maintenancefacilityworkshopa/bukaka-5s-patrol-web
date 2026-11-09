@@ -11,10 +11,15 @@ enum AppRole {
       case 'ADMIN':
         return AppRole.ADMIN;
       case 'PIC_AREA':
+      case 'PIC AREA':
+      case 'PIC':
         return AppRole.PIC_AREA;
       case 'STAFF_AHLI':
+      case 'STAFF AHLI':
         return AppRole.STAFF_AHLI;
       case 'STAFF_INTERNSHIP':
+      case 'STAFF INTERNSHIP':
+      case 'INTERN':
         return AppRole.STAFF_INTERNSHIP;
       default:
         return AppRole.STAFF_AHLI;
@@ -93,7 +98,7 @@ class UserModel {
       case AppRole.PIC_AREA:
         return 'PIC Area';
       case AppRole.STAFF_INTERNSHIP:
-        return 'Intern';
+        return 'Staff Internship';
       case AppRole.STAFF_AHLI:
         return 'Staff Ahli';
     }
@@ -106,11 +111,22 @@ class UserModel {
         return AppRole.ADMIN;
       case 'PIC Area':
         return AppRole.PIC_AREA;
+      case 'Staff Internship':
       case 'Intern':
         return AppRole.STAFF_INTERNSHIP;
       case 'Staff Ahli':
       default:
         return AppRole.STAFF_AHLI;
     }
+  }
+
+  // Helper pembuat inisial 2 huruf nama (Misal: Pandu Muhammad Akbar -> PA)
+  String get initials {
+    if (fullName.trim().isEmpty) return 'U';
+    final parts = fullName.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 }

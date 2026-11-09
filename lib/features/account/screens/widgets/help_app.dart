@@ -1,20 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HelpAppScreen extends StatelessWidget {
   const HelpAppScreen({super.key});
 
-  final String _manualPdfUrl = 'https://example.com/buku_panduan_patrol_5s.pdf';
+  /// Mengambil Public URL PDF langsung dari Supabase Storage
+  String _getManualPdfUrl() {
+    final supabase = Supabase.instance.client;
+
+    const String fileName = 'Manual User Guide Aplikasi 5S Patrol Sistem WSA.pdf';
+
+    return supabase.storage.from('documents').getPublicUrl(fileName);
+  }
 
   Future<void> _openManualPdf(BuildContext context) async {
-    final uri = Uri.parse(_manualPdfUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
+    try {
+      final String pdfUrl = _getManualPdfUrl();
+      final Uri uri = Uri.parse(pdfUrl);
+
+      final bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Tidak dapat membuka link buku panduan PDF.')),
+            content: Text('Tidak dapat membuka link buku panduan PDF.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengunduh buku panduan: $e')),
         );
       }
     }
@@ -113,8 +133,11 @@ class HelpAppScreen extends StatelessWidget {
                   height: 44,
                   child: OutlinedButton.icon(
                     onPressed: () => _openManualPdf(context),
-                    icon: const Icon(Icons.download_rounded,
-                        color: primaryBlue, size: 18),
+                    icon: const Icon(
+                      Icons.download_rounded,
+                      color: primaryBlue,
+                      size: 18,
+                    ),
                     label: const Text(
                       'Buka Buku Panduan',
                       style: TextStyle(

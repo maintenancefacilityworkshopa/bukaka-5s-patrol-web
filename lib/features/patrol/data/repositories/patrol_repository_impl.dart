@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../domain/repositories/patrol_repository.dart';
 import '../datasources/patrol_remote_datasource.dart';
 import '../models/patrol_model.dart';
@@ -13,13 +14,24 @@ class PatrolRepositoryImpl implements PatrolRepository {
   }
 
   @override
-  Future<Map<String, String>> getProfilesMap(List<String> userIds) {
-    return _remoteDatasource.fetchProfilesMap(userIds);
+  Future<Map<String, String>> getProfilesMap(List<String> userIds) async {
+    final profiles = await _remoteDatasource.fetchProfilesMap(userIds);
+    return profiles.map((key, value) => MapEntry(key, value.toString()));
   }
 
   @override
-  Future<void> deletePatrol(dynamic id) {
-    return _remoteDatasource.deletePatrol(id);
+  Future<PatrolModel> createPatrol(Map<String, dynamic> patrolData) {
+    return _remoteDatasource.createPatrol(patrolData);
+  }
+
+  @override
+  Future<PatrolModel> updatePatrol(dynamic id, Map<String, dynamic> updatedData) {
+    return _remoteDatasource.updatePatrol(id, updatedData);
+  }
+
+  @override
+  Future<void> deletePatrol(dynamic id, {String? kodePatrol}) {
+    return _remoteDatasource.deletePatrol(id, kodePatrol: kodePatrol);
   }
 
   @override

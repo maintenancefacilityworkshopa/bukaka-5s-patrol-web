@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/notification_service.dart';
 import '../../models/notification_model.dart';
 import '../widgets/notification_preferences.dart';
+import '../../../patrol/presentation/screens/detail_patrol_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   final bool isAdmin;
@@ -14,16 +16,13 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   final NotificationService _service = NotificationService();
+  final _supabase = Supabase.instance.client;
   String _selectedTab = 'Semua';
 
-  static const primaryBlue = Color(0xFF00569E);
+  static const primaryBlue = Color(0xFF2563EB);
 
   List<String> get _tabs {
-    if (widget.isAdmin) {
-      return ['Semua', 'Permintaan', 'Patrol', 'Sistem'];
-    } else {
-      return ['Semua', 'Patrol', 'Profile', 'Sistem'];
-    }
+    return ['Semua', 'Patrol', 'Profile', 'Sistem'];
   }
 
   String _formatTimeAgo(DateTime dateTime) {
@@ -31,13 +30,66 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (diff.inSeconds < 60) {
       return 'Baru saja';
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} menit lalu';
+      return '${diff.inMinutes}m lalu';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours} jam lalu';
+      return '${diff.inHours}j lalu';
     } else if (diff.inDays < 7) {
-      return '${diff.inDays} hari lalu';
+      return '${diff.inDays}d lalu';
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
+  }
+
+  Future<void> _handleNotificationTap(NotificationModel item) async {
+    if (!item.isRead) {
+      await _service.markAsRead(item.id);
+    }
+
+    final patrolRef = item.referenceId;
+    if (patrolRef == null || patrolRef.isEmpty) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: primaryBlue),
+      ),
+    );
+
+    try {
+      final response = await _supabase
+          .from('patrols')
+          .select()
+          .or('kode_patrol.eq.$patrolRef,id.eq.$patrolRef')
+          .maybeSingle();
+
+      if (mounted) Navigator.pop(context);
+
+      if (response != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailPatrolScreen(
+              patrolData: Map<String, dynamic>.from(response),
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data patroli tidak ditemukan')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal membuka detail patroli: $e')),
+        );
+      }
     }
   }
 
@@ -49,7 +101,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        // Tombol Kembali (Turn Back Button)
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
@@ -87,7 +138,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
       body: Column(
         children: [
-          // Filter Tab Bar (Sudah diperbaiki: color dimasukkan ke dalam BoxDecoration)
+          // Filter Tab Header
           Container(
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -115,10 +166,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       tab,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
-                        color:
-                            isSelected ? primaryBlue : const Color(0xFF64748B),
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        color: isSelected ? primaryBlue : const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -127,13 +176,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ),
 
-          // Real-time Stream Notification List
+          // Body Daftar Notifikasi Stream
           Expanded(
             child: StreamBuilder<List<NotificationModel>>(
               stream: _service.streamNotifications(isAdmin: widget.isAdmin),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(color: primaryBlue),
+                  );
                 }
 
                 final rawList = snapshot.data ?? [];
@@ -141,18 +192,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 final filteredList = rawList.where((item) {
                   final typeLower = item.type.toLowerCase();
                   if (_selectedTab == 'Semua') return true;
-                  if ((_selectedTab == 'Permintaan' ||
-                          _selectedTab == 'Profile') &&
-                      (typeLower.contains('profile') ||
-                          typeLower.contains('edit'))) {
+                  if (_selectedTab == 'Profile' && (typeLower.contains('profile') || typeLower.contains('edit'))) {
                     return true;
                   }
-                  if (_selectedTab == 'Patrol' &&
-                      typeLower.contains('patrol')) {
+                  if (_selectedTab == 'Patrol' && (typeLower.contains('patrol') || typeLower.contains('schedule'))) {
                     return true;
                   }
-                  if (_selectedTab == 'Sistem' &&
-                      typeLower.contains('system')) {
+                  if (_selectedTab == 'Sistem' && (typeLower.contains('system') || typeLower.contains('sistem'))) {
                     return true;
                   }
                   return false;
@@ -184,17 +230,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Widget _buildNotificationCard(NotificationModel item) {
-    final typeLower = item.type.toLowerCase();
-    final isPatrol = typeLower.contains('patrol');
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () async {
-          if (!item.isRead) {
-            await _service.markAsRead(item.id);
-          }
-        },
+        onTap: () => _handleNotificationTap(item),
         borderRadius: BorderRadius.circular(14),
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -210,50 +249,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isPatrol
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFEF3C7),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isPatrol ? Icons.assignment_outlined : Icons.calendar_month,
-                  color: isPatrol ? Colors.green : Colors.amber.shade800,
-                  size: 20,
-                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: item.iconBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      item.iconData,
+                      color: item.iconColor,
+                      size: 20,
+                    ),
+                  ),
+                  if (!item.isRead)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: item.isRead
-                                  ? FontWeight.bold
-                                  : FontWeight.w900,
-                              color: const Color(0xFF1E293B),
-                            ),
-                          ),
-                        ),
-                        if (!item.isRead)
-                          Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: item.isRead
+                            ? FontWeight.bold
+                            : FontWeight.w900,
+                        color: const Color(0xFF1E293B),
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(

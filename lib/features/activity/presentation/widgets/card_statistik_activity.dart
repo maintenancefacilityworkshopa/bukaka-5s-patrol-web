@@ -6,16 +6,16 @@ class CardStatistikActivity extends StatelessWidget {
   final int inProgress;
   final int open;
   final String selectedTimeFilter;
-  final ValueChanged<String?>? onSelectFilter;
+  final VoidCallback? onTapFilter;
 
   const CardStatistikActivity({
     super.key,
-    this.totalPatrol = 12,
-    this.selesai = 8,
-    this.inProgress = 4,
-    this.open = 1,
-    this.selectedTimeFilter = 'Hari Ini',
-    this.onSelectFilter,
+    this.totalPatrol = 0,
+    this.selesai = 0,
+    this.inProgress = 0,
+    this.open = 0,
+    this.selectedTimeFilter = 'Semua Waktu',
+    this.onTapFilter,
   });
 
   @override
@@ -27,7 +27,7 @@ class CardStatistikActivity extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF2563EB), // Blue Theme
+        color: const Color(0xFF2563EB),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -40,13 +40,12 @@ class CardStatistikActivity extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card dengan Filter
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Ringkasan Saya',
                     style: TextStyle(
@@ -65,15 +64,20 @@ class CardStatistikActivity extends StatelessWidget {
                   ),
                 ],
               ),
-              // Dropdown Filter Tanggal (Hari Ini, dd/mm/yy)
-              PopupMenuButton<String>(
-                onSelected: onSelectFilter,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+              // TOMBOL FILTER PERIODE WAKTU (MEMBUKA MODAL GAMBAR 3)
+              InkWell(
+                onTap: onTapFilter,
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -82,43 +86,29 @@ class CardStatistikActivity extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         selectedTimeFilter,
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 16),
                     ],
                   ),
                 ),
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                  const PopupMenuItem<String>(
-                    value: 'Hari Ini',
-                    child: Text('Hari Ini', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem<String>(
-                    value: 'Pilih Tanggal...',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_calendar_rounded, size: 16, color: Color(0xFF2563EB)),
-                        SizedBox(width: 8),
-                        Text('Pilih Tanggal (dd/mm/yy)', style: TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Grid Layout 2x2
           Row(
             children: [
               Expanded(
                 child: _buildGridBox(
                   title: 'Total Patrol',
                   value: '$totalPatrol',
-                  subtext: '▲ +2 dari bulan lalu',
+                  subtext: '▲ Akumulasi data',
                   subtextColor: const Color(0xFF16A34A),
                   icon: Icons.shield_outlined,
                   iconBg: const Color(0xFFEFF6FF),
@@ -170,7 +160,6 @@ class CardStatistikActivity extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Bar Progress
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

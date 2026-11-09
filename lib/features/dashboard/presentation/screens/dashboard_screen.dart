@@ -142,7 +142,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBodyContent() {
-    // JIKA MASIH DALAM PROSES MUAT AWAL: TAMPILKAN SHIMMER SKELETON BERSIH
     if (_isLoading) {
       return Shimmer.fromColors(
         baseColor: const Color(0xFFE2E8F0),
@@ -156,22 +155,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    height: 110,
+                    height: 100,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Container(
-                    height: 110,
+                    height: 100,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -180,7 +179,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Container(
               height: 180,
               decoration: BoxDecoration(
@@ -188,7 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            const SizedBox(height: 110),
+            const SizedBox(height: 100),
           ],
         ),
       );
@@ -222,28 +221,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 1. Grafik Trend
         TrendTemuanChart(
           trendPoints: _dashboardData!.trendPoints,
           currentFilter: _filter,
           onFilterChanged: _onFilterChanged,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10), // Jarak diperketat pas rapat
+
+        // 2. Ringkasan Status
         RingkasanStatusCards(
           stats: _dashboardData!.summaryStats,
           currentFilter: _filter,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10), // Jarak sama presisi dengan atasnya (✓)
+
+        // 3. Donut Chart
         StatusDonutChart(data: _dashboardData!.donutData),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
+
+        // 4. Daftar Notifikasi
         DashboardNotificationList(
           notifications: _notifications,
           onItemTap: _handleNotificationTap,
           onRefreshRequested: _fetchData,
         ),
-        
-        // Bottom Padding untuk Ruang Navigasi Bawah
-        const SizedBox(height: 110),
+        const SizedBox(height: 100), // Space aman untuk Floating Navbar
       ],
     );
   }

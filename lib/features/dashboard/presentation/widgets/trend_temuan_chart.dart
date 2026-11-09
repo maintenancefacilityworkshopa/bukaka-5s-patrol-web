@@ -75,7 +75,7 @@ class _TrendTemuanChartState extends State<TrendTemuanChart> {
     } else if (isYearAll) {
       return 'Bulan ${widget.currentFilter.month}';
     } else {
-      return 'Bln ${widget.currentFilter.month} / ${widget.currentFilter.year}';
+      return 'Bulan ${widget.currentFilter.month} / ${widget.currentFilter.year}';
     }
   }
 

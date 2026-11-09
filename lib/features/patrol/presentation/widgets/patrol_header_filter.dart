@@ -95,15 +95,14 @@ class PatrolHeaderFilter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF2563EB), // Header Warna Biru
+        color: Color(0xFF2563EB),
         borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(18), // Melengkung di Bagian Bawah
+          bottom: Radius.circular(18),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
         children: [
-          // Row Search Field + Filter Button
           Row(
             children: [
               Expanded(
@@ -149,7 +148,6 @@ class PatrolHeaderFilter extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Row Dropdown Status & Lokasi
           Row(
             children: [
               Expanded(

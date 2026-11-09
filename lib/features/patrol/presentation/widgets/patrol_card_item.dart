@@ -19,7 +19,6 @@ class PatrolCardItem extends StatefulWidget {
 }
 
 class _PatrolCardItemState extends State<PatrolCardItem> {
-  // State lokal untuk mengontrol status terbuka/tertutupnya opsi aksi per card
   bool _isSelected = false;
 
   Color _getStatusColor(String status) {
@@ -86,14 +85,21 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
     DateTime dateVal = DateTime.now();
     final rawDate = widget.item['created_at'] ?? widget.item['tanggal'];
     if (rawDate != null) {
-      dateVal = DateTime.tryParse(rawDate.toString()) ?? DateTime.now();
+      dateVal = DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
     }
     final formattedTagDate = DateFormat('dd/MM/yyyy').format(dateVal);
 
     final status = (widget.item['status'] ?? 'OPEN').toString();
-    final lokasi = widget.item['lokasi'] ?? '-';
-    final item5s = widget.item['item_5s'] ?? '-';
-    final deskripsi = widget.item['deskripsi'] ?? '-';
+    final lokasi = widget.item['lokasi'] ?? widget.item['location'] ?? '-';
+    final item5s = widget.item['item_5s'] ?? widget.item['item5s'] ?? '-';
+    
+    // --- JUDUL PATROL ---
+    final judulRaw = widget.item['judul'] ?? widget.item['title'];
+    final judul = (judulRaw != null && judulRaw.toString().trim().isNotEmpty)
+        ? judulRaw.toString()
+        : 'Team Inspeksi 5S';
+
+    final deskripsi = widget.item['description'] ?? widget.item['deskripsi'] ?? '-';
     final kodePatrol = widget.item['kode_patrol'] ??
         widget.item['kode'] ??
         'NP-2026-${widget.indexNumber.toString().padLeft(3, '0')}';
@@ -103,9 +109,13 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
     final statusBgColor = _getStatusBgColor(status);
     final statusLabel = _formatStatusText(status);
 
+    // --- SUBTITLE FORMAT: KODE • LOKASI • ITEM 5S ---
+    final String subheaderText = (item5s != '-' && item5s.toString().isNotEmpty)
+        ? '$kodePatrol  •  $lokasi  •  $item5s'
+        : '$kodePatrol  •  $lokasi';
+
     return GestureDetector(
       onTap: () {
-        // Toggle hanya state lokal card ini (tanpa mengganggu halaman utama)
         setState(() {
           _isSelected = !_isSelected;
         });
@@ -123,23 +133,20 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Indikator Garis Status Kiri
                 Container(width: 5, color: statusColor),
-
-                // Konten Utama Card
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Teks & Informational Chips
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // --- KODE PATROL • LOKASI • ITEM 5S ---
                               Text(
-                                '$kodePatrol  •  $lokasi',
+                                subheaderText,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 12,
@@ -148,8 +155,10 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                                 ),
                               ),
                               const SizedBox(height: 4),
+                              
+                              // --- JUDUL PATROL ---
                               Text(
-                                item5s,
+                                judul,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -185,8 +194,6 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                           ),
                         ),
                         const SizedBox(width: 10),
-
-                        // Badge Status / Tombol Aksi LIHAT & DELETE
                         Center(
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
@@ -195,7 +202,6 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                                     key: ValueKey<String>('actions_$itemId'),
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Tombol LIHAT
                                       InkWell(
                                         onTap: () {
                                           Navigator.push(
@@ -224,14 +230,12 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w800,
-                                              color: Color.fromARGB(
-                                                  255, 116, 114, 152),
+                                              color: Color.fromARGB(255, 116, 114, 152),
                                             ),
                                           ),
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      // Tombol DELETE
                                       InkWell(
                                         onTap: widget.onDelete,
                                         child: Container(

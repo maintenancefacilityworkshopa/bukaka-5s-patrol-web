@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -54,7 +56,30 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
   @override
   void initState() {
     super.initState();
+    _checkLostCameraData();
     _initData();
+  }
+
+  Future<void> _checkLostCameraData() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+
+    try {
+      final LostDataResponse response = await _picker.retrieveLostData();
+      if (response.isEmpty || response.file == null) return;
+
+      final bytes = await response.file!.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _fotoSebelumBytes = bytes;
+        });
+      }
+    } on UnimplementedError catch (e) {
+      debugPrint('retrieveLostData belum diimplementasikan: $e');
+    } on UnsupportedError catch (e) {
+      debugPrint('retrieveLostData tidak didukung di platform ini: $e');
+    } catch (e) {
+      debugPrint('Error memulihkan foto lost data: $e');
+    }
   }
 
   Future<void> _initData() async {
@@ -117,19 +142,24 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
 
   void _initEditData() {
     final data = widget.editData!;
-    _judulController.text = data['judul']?.toString() ?? '';
-    _namaPembuatController.text =
-        (data['nama_pembuat'] ?? data['inspektor'] ?? data['pelapor_nama'] ?? '')
-            .toString();
+    _judulController.text = data['judul']?.toString() ?? data['description']?.toString() ?? '';
+    _namaPembuatController.text = (data['nama_pembuat'] ??
+            data['name_maker'] ??
+            data['inspektor'] ??
+            data['pelapor_nama'] ??
+            '')
+        .toString();
     _selectedLokasi = data['lokasi']?.toString() ?? data['location']?.toString();
     _selected5sItem = data['item_5s']?.toString();
-    _deskripsiController.text = data['deskripsi']?.toString() ?? '';
+    _deskripsiController.text = data['deskripsi']?.toString() ?? data['description']?.toString() ?? '';
 
-    final rawKelas =
-        (data['kelas_tingkatan'] ?? '').toString().trim().toUpperCase();
+    final rawKelas = (data['kelas_tingkatan'] ?? data['priority_level'] ?? '')
+        .toString()
+        .trim()
+        .toUpperCase();
     _kelasTingkatan = _kelasList.contains(rawKelas) ? rawKelas : 'LOW';
 
-    String rawStatus = (data['status'] ?? data['patrol_status'] ?? '')
+    String rawStatus = (data['status'] ?? '')
         .toString()
         .trim()
         .replaceAll('_', ' ')
@@ -141,14 +171,12 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
     }
     _statusPengerjaan = rawStatus;
 
-    _fotoSebelumUrl =
-        (data['foto_sebelum_url'] ?? data['foto_sebelum'])?.toString();
-    _fotoSesudahUrl =
-        (data['foto_sesudah_url'] ?? data['foto_sesudah'])?.toString();
+    _fotoSebelumUrl = data['foto_sebelum_url']?.toString();
+    _fotoSesudahUrl = data['foto_sesudah_url']?.toString();
 
-    final rawDate = data['tanggal'] ?? data['created_at'];
+    final rawDate = data['created_at'] ?? data['tanggal'];
     if (rawDate != null) {
-      _selectedDate = DateTime.tryParse(rawDate.toString()) ?? DateTime.now();
+      _selectedDate = DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
     }
   }
 
@@ -202,16 +230,22 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
               onTap: () async {
                 Navigator.pop(context);
                 final picked = await _picker.pickImage(
-                    source: ImageSource.camera, imageQuality: 70);
+                  source: ImageSource.camera,
+                  maxWidth: 800,
+                  maxHeight: 800,
+                  imageQuality: 60,
+                );
                 if (picked != null) {
                   final bytes = await picked.readAsBytes();
-                  setState(() {
-                    if (isSebelum) {
-                      _fotoSebelumBytes = bytes;
-                    } else {
-                      _fotoSesudahBytes = bytes;
-                    }
-                  });
+                  if (mounted) {
+                    setState(() {
+                      if (isSebelum) {
+                        _fotoSebelumBytes = bytes;
+                      } else {
+                        _fotoSesudahBytes = bytes;
+                      }
+                    });
+                  }
                 }
               },
             ),
@@ -221,16 +255,22 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
               onTap: () async {
                 Navigator.pop(context);
                 final picked = await _picker.pickImage(
-                    source: ImageSource.gallery, imageQuality: 70);
+                  source: ImageSource.gallery,
+                  maxWidth: 800,
+                  maxHeight: 800,
+                  imageQuality: 60,
+                );
                 if (picked != null) {
                   final bytes = await picked.readAsBytes();
-                  setState(() {
-                    if (isSebelum) {
-                      _fotoSebelumBytes = bytes;
-                    } else {
-                      _fotoSesudahBytes = bytes;
-                    }
-                  });
+                  if (mounted) {
+                    setState(() {
+                      if (isSebelum) {
+                        _fotoSebelumBytes = bytes;
+                      } else {
+                        _fotoSesudahBytes = bytes;
+                      }
+                    });
+                  }
                 }
               },
             ),
@@ -337,9 +377,10 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
           'deskripsi': _deskripsiController.text.trim(),
           'kelas_tingkatan': _kelasTingkatan,
           'status': dbStatus,
+          'started_at': DateTime.now().toIso8601String(),
+          'finished_at': dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
           'foto_sebelum_url': urlSebelum,
           'foto_sesudah_url': urlSesudah,
-          'tanggal': _selectedDate.toIso8601String(),
           'created_by': currentUser.id,
           'created_at': DateTime.now().toIso8601String(),
         };
@@ -347,10 +388,7 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
         await _supabase.from('patrols').insert(payload);
       } else {
         final patrolId = widget.editData!['id'];
-        final oldStatus = (widget.editData!['status'] ??
-                           widget.editData!['patrol_status'] ??
-                           'OPEN').toString();
-
+        final oldStatus = (widget.editData!['status'] ?? 'OPEN').toString();
         final createdByUserId = widget.editData!['created_by'];
 
         final Map<String, dynamic> updatePayload = {
@@ -360,9 +398,9 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
           'deskripsi': _deskripsiController.text.trim(),
           'kelas_tingkatan': _kelasTingkatan,
           'status': dbStatus,
+          'finished_at': dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
           'foto_sebelum_url': urlSebelum,
           'foto_sesudah_url': urlSesudah,
-          'tanggal': _selectedDate.toIso8601String(),
         };
 
         await _supabase.from('patrols').update(updatePayload).eq('id', patrolId);
@@ -373,7 +411,7 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
             'previous_status': oldStatus,
             'new_status': dbStatus,
             'changed_by': currentUser.id,
-            'notes': 'Diperbarui melalui aplikasi',
+            'name_changed_by': _namaPembuatController.text.trim(),
             'created_at': DateTime.now().toIso8601String(),
           });
         } catch (logError) {
@@ -387,7 +425,7 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
               'title': 'Patroli Diperbarui',
               'message':
                   'Laporan patroli "${_judulController.text.trim()}" telah diperbarui menjadi status $dbStatus.',
-              'type': 'PATROL_UPDATE',
+              'type': 'patrol',
               'reference_id': patrolId,
               'is_read': false,
               'created_at': DateTime.now().toIso8601String(),
@@ -446,7 +484,6 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
       body: (_isLoading || _isLoadingProfile)
           ? const Center(child: CircularProgressIndicator(color: primaryBlue))
           : SingleChildScrollView(
-              // TAMBAHAN: Bottom padding 110px agar form bawah tidak tertutup oleh tombol / keyboard
               padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 110.0),
               child: Form(
                 key: _formKey,

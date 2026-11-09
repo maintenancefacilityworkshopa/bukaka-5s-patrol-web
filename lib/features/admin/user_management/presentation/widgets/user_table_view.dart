@@ -17,7 +17,6 @@ class UserTableView extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Deteksi apakah tampilan berjalan di Web/Desktop (layar > 600px)
         final bool isDesktop = constraints.maxWidth > 600;
 
         return Container(
@@ -37,11 +36,9 @@ class UserTableView extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: SingleChildScrollView(
-              // Jika di Mobile/Tablet, aktifkan scroll horizontal agar tidak terpotong
               scrollDirection: isDesktop ? Axis.vertical : Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  // Memaksa lebar tabel minimal sama dengan lebar container layar
                   minWidth: constraints.maxWidth,
                 ),
                 child: DataTable(
@@ -209,17 +206,22 @@ class UserTableView extends StatelessWidget {
 
     switch (displayRole) {
       case 'Admin':
-        bgColor = const Color(0xFFEFF6FF);
-        textColor = const Color(0xFF2563EB);
+        bgColor = const Color(0xFFF3E8FF);
+        textColor = const Color(0xFF9333EA);
         break;
+      case 'PIC Area':
+        bgColor = const Color(0xFFEDE9FE);
+        textColor = const Color(0xFF7C3AED);
+        break;
+      case 'Staff Internship':
       case 'Intern':
-        bgColor = const Color(0xFFFFF7ED);
-        textColor = const Color(0xFFEA580C);
+        bgColor = const Color(0xFFDCFCE7);
+        textColor = const Color(0xFF15803D);
         break;
       case 'Staff Ahli':
       default:
-        bgColor = const Color(0xFFF0FDF4);
-        textColor = const Color(0xFF16A34A);
+        bgColor = const Color(0xFFDBEAFE);
+        textColor = const Color(0xFF1D4ED8);
         break;
     }
 

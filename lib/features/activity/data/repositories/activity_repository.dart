@@ -1,5 +1,5 @@
+// lib/features/activity/data/repositories/activity_repository.dart
 import 'package:intl/intl.dart';
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/activity_log_model.dart';
 import '../models/activity_stat_model.dart';
@@ -30,6 +30,7 @@ class ActivityRepository {
   ActivityRepository({SupabaseClient? supabase})
       : _supabase = supabase ?? Supabase.instance.client;
 
+  /// Memproses string timestamp ISO/UTC dari Supabase ke DateTime lokal (WIB/UTC+7)
   DateTime _parseDateTimeToLocal(String? raw) {
     if (raw == null || raw.isEmpty) return DateTime.now();
     try {
@@ -37,91 +38,91 @@ class ActivityRepository {
       if (!formattedRaw.endsWith('Z') && !formattedRaw.contains('+') && !formattedRaw.contains('-')) {
         formattedRaw = '${formattedRaw}Z';
       }
-      final parsed = DateTime.parse(formattedRaw);
-      return parsed.toLocal();
+      return DateTime.parse(formattedRaw).toLocal();
     } catch (_) {
       return DateTime.now();
     }
   }
 
-  Future<ActivityDataPayload> fetchActivityData(DateTime? customDate) async {
+  Future<ActivityDataPayload> fetchActivityData({
+    int selectedMonth = 0, // 0 = Semua Bulan
+    int selectedYear = 0,  // 0 = Semua Tahun
+  }) async {
     final user = _supabase.auth.currentUser;
     if (user == null) {
       throw Exception('Pengguna belum terautentikasi');
     }
 
-    // 1. Cek Role Admin
-    bool isAdmin = false;
+    // 1. Ambil Profile Pengguna (Role & Area Responsibility)
     final profile = await _supabase
         .from('profiles')
-        .select('role')
+        .select('role, area_responsibility')
         .eq('id', user.id)
         .maybeSingle();
 
-    if (profile != null && profile['role'] != null) {
-      final roleStr = profile['role'].toString().toUpperCase();
-      isAdmin = (roleStr == 'ADMIN');
-    }
+    final String userRole = profile?['role']?.toString().toUpperCase() ?? 'STAFF_INTERNSHIP';
+    final String? myArea = profile?['area_responsibility']?.toString();
+    final bool isAdmin = (userRole == 'ADMIN');
 
-    // 2. Fetch Patrols (Ambil kode_patrol asli dari database)
-    var patrolQuery = _supabase.from('patrols').select(
-          'id, created_by, lokasi, item_5s, deskripsi, tanggal, created_at, finished_at, status, judul, kode_patrol',
-        );
+    // 2. Query Tabel Patrols (Untuk Statistik Dashboard Activity)
+    var patrolQuery = _supabase.from('patrols').select();
 
-    if (!isAdmin) {
+    // Saring Data Patrol Berdasarkan Hak Akses Role
+    if (userRole == 'PIC_AREA' && myArea != null && myArea.isNotEmpty) {
+      patrolQuery = patrolQuery.or('created_by.eq.${user.id},lokasi.eq.$myArea');
+    } else if (userRole == 'STAFF_AHLI' || userRole == 'STAFF_INTERNSHIP') {
       patrolQuery = patrolQuery.eq('created_by', user.id);
     }
 
-    if (customDate != null) {
-      final startOfDay = DateTime(customDate.year, customDate.month, customDate.day).toUtc();
-      final endOfDay = DateTime(customDate.year, customDate.month, customDate.day, 23, 59, 59).toUtc();
-      patrolQuery = patrolQuery
-          .gte('tanggal', startOfDay.toIso8601String())
-          .lte('tanggal', endOfDay.toIso8601String());
+    // Saring Berdasarkan Filter Bulan dan Tahun
+    if (selectedYear > 0) {
+      final mStart = selectedMonth > 0 ? selectedMonth : 1;
+      final mEnd = selectedMonth > 0 ? selectedMonth : 12;
+
+      final startDate = DateTime(selectedYear, mStart, 1).toIso8601String();
+      final endDate = DateTime(selectedYear, mEnd + 1, 0, 23, 59, 59).toIso8601String();
+
+      patrolQuery = patrolQuery.gte('created_at', startDate).lte('created_at', endDate);
     }
 
-    final List<dynamic> rawPatrolList = await patrolQuery.order('tanggal', ascending: true);
+    final List<dynamic> rawPatrolList = await patrolQuery.order('created_at', ascending: false);
 
     int done = 0;
     int progress = 0;
     int openCount = 0;
     List<CompletedPatrolModel> doneList = [];
-    List<Map<String, dynamic>> processedPatrols = [];
-    
-    // Map untuk mencocokkan ID Patrol dengan kode_patrol
-    Map<String, String> patrolCodeMap = {};
+    Map<String, Map<String, dynamic>> patrolMap = {};
 
     for (int i = 0; i < rawPatrolList.length; i++) {
-      final p = rawPatrolList[i];
+      final p = Map<String, dynamic>.from(rawPatrolList[i]);
       final st = (p['status'] as String? ?? '').trim().toUpperCase();
 
-      final rawTanggalStr = (p['tanggal'] ?? p['created_at'])?.toString();
+      final rawTanggalStr = (p['created_at'] ?? p['tanggal'])?.toString();
       final DateTime patrolDateTime = _parseDateTimeToLocal(rawTanggalStr);
 
-      // Utamakan kode_patrol dari database Supabase
       final String actualCode = (p['kode_patrol']?.toString().isNotEmpty ?? false)
           ? p['kode_patrol'].toString().replaceAll('SK-', 'NP-')
           : 'NP-${patrolDateTime.year}-${(i + 1).toString().padLeft(4, '0')}';
 
+      p['kode_patrol'] = actualCode;
+      p['lokasi_clean'] = (p['lokasi']?.toString().isNotEmpty ?? false) ? p['lokasi'].toString() : 'Area Pabrik';
+      p['date_time'] = patrolDateTime;
+
       final String patrolId = p['id']?.toString() ?? '';
       if (patrolId.isNotEmpty) {
-        patrolCodeMap[patrolId] = actualCode;
+        patrolMap[patrolId] = p;
       }
-
-      final lokasiName = (p['lokasi']?.toString().isNotEmpty ?? false)
-          ? p['lokasi'].toString()
-          : 'Maintenance Area';
 
       if (st == 'CLOSED' || st == 'COMPLETED' || st == 'SELESAI') {
         done++;
-        final rawFinishedAtStr = (p['finished_at'] ?? p['tanggal'] ?? p['created_at'])?.toString();
+        final rawFinishedAtStr = (p['finished_at'] ?? p['created_at'])?.toString();
         final dtFinished = _parseDateTimeToLocal(rawFinishedAtStr);
-        final formattedFinishedDate = DateFormat('dd MMM yyyy, HH:mm').format(dtFinished);
 
         doneList.add(
           CompletedPatrolModel(
-            locationName: lokasiName,
-            finishedAt: formattedFinishedDate,
+            locationName: p['lokasi_clean'],
+            finishedAt: DateFormat('dd/MM/yy HH:mm').format(dtFinished),
+            rawPatrolData: p,
           ),
         );
       } else if (st == 'IN PROGRESS' || st == 'IN_PROGRESS' || st == 'PROSES') {
@@ -129,13 +130,6 @@ class ActivityRepository {
       } else if (st == 'OPEN' || st == 'PENDING') {
         openCount++;
       }
-
-      processedPatrols.add({
-        ...p,
-        'display_code': actualCode,
-        'lokasi_clean': lokasiName,
-        'date_time': patrolDateTime,
-      });
     }
 
     final stats = ActivityStatModel(
@@ -145,110 +139,65 @@ class ActivityRepository {
       open: openCount,
     );
 
-    processedPatrols = processedPatrols.reversed.toList();
+    // 3. Query Activity Logs
+    var logsQuery = _supabase.from('activity_logs').select();
 
-    // 3. Fetch Activity Logs
-    List<ActivityLogModel> todayList = [];
-    List<ActivityLogModel> yesterdayList = [];
-
-    final now = DateTime.now();
-    final todayDate = DateTime(now.year, now.month, now.day);
-    final yesterdayDate = todayDate.subtract(const Duration(days: 1));
-
-    var logsQuery = _supabase.from('activity_logs').select().eq('user_id', user.id);
-    final List<dynamic> logList = await logsQuery.order('created_at', ascending: false).limit(30);
-
-    if (logList.isNotEmpty) {
-      for (var log in logList) {
-        final createdAtStr = log['created_at']?.toString();
-        if (createdAtStr == null) continue;
-
-        final createdAt = _parseDateTimeToLocal(createdAtStr);
-        final logDate = DateTime(createdAt.year, createdAt.month, createdAt.day);
-        final timeFormatted = DateFormat('HH:mm').format(createdAt);
-
-        // Sisipkan kode_patrol presisi dari database berdasarkan record_id
-        final recordId = log['record_id']?.toString() ?? '';
-        final mapData = Map<String, dynamic>.from(log);
-        
-        if (patrolCodeMap.containsKey(recordId)) {
-          mapData['kode_patrol'] = patrolCodeMap[recordId];
-        } else if (processedPatrols.isNotEmpty) {
-          mapData['kode_patrol'] = processedPatrols.first['display_code'];
-        }
-
-        final item = ActivityLogModel.fromMap(mapData, timeFormatted);
-
-        if (logDate.isAtSameMomentAs(todayDate)) {
-          todayList.add(item);
-        } else if (logDate.isAtSameMomentAs(yesterdayDate)) {
-          yesterdayList.add(item);
-        } else {
-          todayList.add(item);
-        }
-      }
-    } else {
-      // Fallback log jika tabel activity_logs kosong
-      for (var p in processedPatrols) {
-        final DateTime patrolDateTime = p['date_time'];
-        final logDate = DateTime(patrolDateTime.year, patrolDateTime.month, patrolDateTime.day);
-        final timeFormatted = DateFormat('HH:mm').format(patrolDateTime);
-
-        final String lokasiName = p['lokasi_clean'];
-        final String codeName = p['display_code'];
-
-        final st = (p['status'] as String? ?? '').trim().toUpperCase();
-        final isClosed = st == 'CLOSED' || st == 'COMPLETED' || st == 'SELESAI';
-
-        final item = ActivityLogModel(
-          action: isClosed ? 'Patroli Selesai' : 'Membuat Patroli Baru',
-          code: codeName,
-          location: lokasiName,
-          time: timeFormatted,
-          status: p['status']?.toString() ?? 'OPEN',
-          createdAt: patrolDateTime,
-          icon: isClosed ? Icons.check_circle_rounded : Icons.add_task_rounded,
-          iconColor: isClosed ? const Color(0xFF16A34A) : const Color(0xFF2563EB),
-          iconBgColor: isClosed ? const Color(0xFFF0FDF4) : const Color(0xFFEFF6FF),
-        );
-
-        if (logDate.isAtSameMomentAs(todayDate)) {
-          todayList.add(item);
-        } else if (logDate.isAtSameMomentAs(yesterdayDate)) {
-          yesterdayList.add(item);
-        } else {
-          todayList.add(item);
-        }
-      }
+    // Saring log berdasarkan role:
+    // - Admin: Semua Log
+    // - PIC_AREA: Log user sendiri ATAU log lokasi di area_responsibility
+    // - Staff Ahli & Internship: Log diri sendiri saja
+    if (userRole == 'PIC_AREA' && myArea != null && myArea.isNotEmpty) {
+      logsQuery = logsQuery.or('user_id.eq.${user.id},area_location.eq.$myArea');
+    } else if (userRole == 'STAFF_AHLI' || userRole == 'STAFF_INTERNSHIP') {
+      logsQuery = logsQuery.eq('user_id', user.id);
     }
 
-    // 4. Fetch Schedules
-    List<ScheduleItemModel> loadedSchedules = [];
-    try {
-      final schedulesRes = await _supabase
-          .from('schedules')
-          .select('id, title, description, start_date')
-          .order('start_date', ascending: false)
-          .limit(10);
+    // Filter tanggal log
+    if (selectedYear > 0) {
+      final mStart = selectedMonth > 0 ? selectedMonth : 1;
+      final mEnd = selectedMonth > 0 ? selectedMonth : 12;
 
-      for (var s in schedulesRes) {
-        loadedSchedules.add(
-          ScheduleItemModel(
-            title: s['title'] ?? 'Jadwal Patrol 5S',
-            date: s['start_date'] ?? '-',
-            location: s['description'] ?? 'Area Pabrik',
-          ),
-        );
+      final startDate = DateTime(selectedYear, mStart, 1).toIso8601String();
+      final endDate = DateTime(selectedYear, mEnd + 1, 0, 23, 59, 59).toIso8601String();
+
+      logsQuery = logsQuery.gte('created_at', startDate).lte('created_at', endDate);
+    }
+
+    final List<dynamic> logList = await logsQuery.order('created_at', ascending: false).limit(100);
+    List<ActivityLogModel> logsList = [];
+    Set<String> processedRecordIds = {};
+
+    for (var log in logList) {
+      final recordId = log['record_id']?.toString() ?? log['id']?.toString() ?? '';
+
+      if (recordId.isNotEmpty && processedRecordIds.contains(recordId)) {
+        continue;
       }
-    } catch (_) {}
+      if (recordId.isNotEmpty) {
+        processedRecordIds.add(recordId);
+      }
+
+      final createdAtStr = log['created_at']?.toString();
+      if (createdAtStr == null) continue;
+
+      final createdAt = _parseDateTimeToLocal(createdAtStr);
+      final timeFormatted = DateFormat('dd/MM/yy HH:mm').format(createdAt);
+      final linkedPatrol = patrolMap[recordId];
+
+      logsList.add(ActivityLogModel.fromMap(
+        Map<String, dynamic>.from(log),
+        timeFormatted,
+        rawPatrolData: linkedPatrol,
+      ));
+    }
 
     return ActivityDataPayload(
       isAdmin: isAdmin,
       stats: stats,
-      logsToday: todayList,
-      logsYesterday: yesterdayList,
+      logsToday: logsList,
+      logsYesterday: [],
       completedPatrols: doneList,
-      schedules: loadedSchedules,
+      schedules: [],
     );
   }
 }
