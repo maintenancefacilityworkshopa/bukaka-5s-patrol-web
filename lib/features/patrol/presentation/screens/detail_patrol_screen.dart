@@ -380,7 +380,7 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                                           SizedBox(height: 10),
                                           _LabelRow(
                                               icon: Icons.description_outlined,
-                                              label: 'Judul'),
+                                              label: 'Team Patroli'),
                                           SizedBox(height: 10),
                                           _LabelRow(
                                               icon: Icons.people_outline,
@@ -463,7 +463,7 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          _buildImageCard(fotoBeforeUrl),
+                          _buildImageCard(fotoBeforeUrl, title: 'FOTO SEBELUM'),
 
                           const SizedBox(height: 16),
 
@@ -477,7 +477,7 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          _buildImageCard(fotoAfterUrl),
+                          _buildImageCard(fotoAfterUrl, title: 'FOTO SESUDAH'),
 
                           const SizedBox(height: 16),
                         ],
@@ -508,8 +508,9 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
                             width: 1.5),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22)),
-                        backgroundColor:
-                            canEdit ? const Color(0xFFF0F9FF) : Colors.grey.shade100,
+                        backgroundColor: canEdit
+                            ? const Color(0xFFF0F9FF)
+                            : Colors.grey.shade100,
                       ),
                       onPressed: _handleEditAction,
                       child: Text(
@@ -551,40 +552,76 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
     );
   }
 
-  Widget _buildImageCard(String? imageUrl) {
+  Widget _buildImageCard(String? imageUrl, {required String title}) {
     const primaryBlue = Color(0xFF00569E);
+    final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E7EB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: primaryBlue, width: 1.5),
+    return GestureDetector(
+      onTap: hasImage ? () => _openImageZoomViewer(imageUrl, title) : null,
+      child: Container(
+        height: 200,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: primaryBlue, width: 1.5),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: hasImage
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(color: primaryBlue),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildPlaceholder(
+                          icon: Icons.broken_image_outlined,
+                          text: 'Gagal memuat foto',
+                        );
+                      },
+                    ),
+                    Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.zoom_in_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : _buildPlaceholder(
+                  icon: Icons.image_not_supported_outlined,
+                  text: 'Tidak ada foto',
+                ),
+        ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: imageUrl != null && imageUrl.isNotEmpty
-            ? Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(color: primaryBlue),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildPlaceholder(
-                    icon: Icons.broken_image_outlined,
-                    text: 'Gagal memuat foto',
-                  );
-                },
-              )
-            : _buildPlaceholder(
-                icon: Icons.image_not_supported_outlined,
-                text: 'Tidak ada foto',
-              ),
+    );
+  }
+
+  void _openImageZoomViewer(String imageUrl, String title) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      builder: (context) => _ZoomableImageDialog(
+        imageUrl: imageUrl,
+        title: title,
       ),
     );
   }
@@ -596,7 +633,8 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
         children: [
           Icon(icon, color: Colors.black38, size: 36),
           const SizedBox(height: 6),
-          Text(text, style: const TextStyle(color: Colors.black38, fontSize: 12)),
+          Text(text,
+              style: const TextStyle(color: Colors.black38, fontSize: 12)),
         ],
       ),
     );
@@ -619,10 +657,140 @@ class _LabelRow extends StatelessWidget {
           child: Text(
             label,
             style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ZoomableImageDialog extends StatefulWidget {
+  final String imageUrl;
+  final String title;
+
+  const _ZoomableImageDialog({
+    required this.imageUrl,
+    required this.title,
+  });
+
+  @override
+  State<_ZoomableImageDialog> createState() => _ZoomableImageDialogState();
+}
+
+class _ZoomableImageDialogState extends State<_ZoomableImageDialog> {
+  final TransformationController _transformationController =
+      TransformationController();
+  TapDownDetails? _doubleTapDetails;
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _handleDoubleTap() {
+    if (_transformationController.value != Matrix4.identity()) {
+      _transformationController.value = Matrix4.identity();
+    } else if (_doubleTapDetails != null) {
+      final position = _doubleTapDetails!.localPosition;
+      const double scale = 2.5;
+      _transformationController.value = Matrix4.identity()
+        ..translateByDouble(
+          -position.dx * (scale - 1),
+          -position.dy * (scale - 1),
+          0.0,
+          1.0,
+        )
+        ..scaleByDouble(scale, scale, 1.0, 1.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onDoubleTapDown: (details) => _doubleTapDetails = details,
+                onDoubleTap: _handleDoubleTap,
+                child: InteractiveViewer(
+                  transformationController: _transformationController,
+                  minScale: 0.8,
+                  maxScale: 5.0,
+                  clipBehavior: Clip.none,
+                  child: Center(
+                    child: Image.network(
+                      widget.imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image_outlined,
+                                color: Colors.white54, size: 48),
+                            SizedBox(height: 8),
+                            Text(
+                              'Gagal memuat gambar',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.6),
+                    ),
+                    icon: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 24),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

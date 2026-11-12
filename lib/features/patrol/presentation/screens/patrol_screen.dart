@@ -34,21 +34,8 @@ class _PatrolScreenState extends State<PatrolScreen> {
     'CLOSED',
   ];
 
-  final List<String> _lokasiOptions = const [
-    'Semua Lokasi',
-    'Area Production Line A',
-    'Area Production Line B',
-    'Area Production Line C',
-    'Area Production Line D-E',
-    'Area Production Line F',
-    'Area Production Line G',
-    'Area Line Blasting Painting',
-    'Area Line Corrugated',
-    'Area Longspan',
-    'Area Stockyard Packing',
-    'Area Warehouse Utama',
-    'Maintenance Area',
-  ];
+  List<String> _lokasiOptions = ['Semua Lokasi'];
+  List<Map<String, dynamic>> _locationsMaster = [];
 
   @override
   void initState() {
@@ -56,6 +43,7 @@ class _PatrolScreenState extends State<PatrolScreen> {
     final remoteDatasource = PatrolRemoteDatasource(Supabase.instance.client);
     _repository = PatrolRepositoryImpl(remoteDatasource);
     _checkUserRole();
+    _fetchLokasiOptions();
   }
 
   @override
@@ -64,6 +52,42 @@ class _PatrolScreenState extends State<PatrolScreen> {
       ScaffoldMessenger.of(context).clearSnackBars();
     } catch (_) {}
     super.dispose();
+  }
+
+  /// Mengambil daftar seluruh lokasi dari tabel 'locations' Supabase
+  Future<void> _fetchLokasiOptions() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('locations')
+          .select('id, code, name, description')
+          .eq('is_active', true)
+          .order('code', ascending: true);
+
+      final List<Map<String, dynamic>> masterList =
+          List<Map<String, dynamic>>.from(response);
+
+      final List<String> fetchedLocations = ['Semua Lokasi'];
+      for (final item in masterList) {
+        final name = item['name']?.toString().trim();
+        if (name != null &&
+            name.isNotEmpty &&
+            !fetchedLocations.contains(name)) {
+          fetchedLocations.add(name);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _locationsMaster = masterList;
+          _lokasiOptions = fetchedLocations;
+          if (!_lokasiOptions.contains(_selectedLokasi)) {
+            _selectedLokasi = 'Semua Lokasi';
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetch lokasi options: $e');
+    }
   }
 
   Future<void> _checkUserRole() async {
@@ -87,7 +111,10 @@ class _PatrolScreenState extends State<PatrolScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _checkUserRole();
+    await Future.wait([
+      _checkUserRole(),
+      _fetchLokasiOptions(),
+    ]);
     if (mounted) {
       setState(() {});
     }
@@ -159,29 +186,67 @@ class _PatrolScreenState extends State<PatrolScreen> {
       return updatedPatrol;
     }).toList();
 
+    // 1. Filter Status
     if (_selectedStatus != 'Semua Status') {
       final filterKey = _selectedStatus.replaceAll(' ', '_').toUpperCase();
       list = list.where((item) {
-        final st =
-            (item['status'] ?? '').toString().replaceAll(' ', '_').toUpperCase();
+        final st = (item['status'] ?? '')
+            .toString()
+            .replaceAll(' ', '_')
+            .toUpperCase();
         return st == filterKey;
       }).toList();
     }
 
+    // 2. Filter Lokasi (Aman dari null/undefined & tanpa firstWhere)
     if (_selectedLokasi != 'Semua Lokasi') {
+      final targetText = _selectedLokasi.trim().toLowerCase();
+
+      String targetId = '';
+      String targetName = targetText;
+      String targetDesc = '';
+
+      // Cari padanan dari _locationsMaster menggunakan loop biasa
+      for (final loc in _locationsMaster) {
+        final name = loc['name']?.toString().trim().toLowerCase() ?? '';
+        final desc = loc['description']?.toString().trim().toLowerCase() ?? '';
+        if (name == targetText || desc == targetText) {
+          targetId = loc['id']?.toString().trim() ?? '';
+          targetName = name;
+          targetDesc = desc;
+          break;
+        }
+      }
+
       list = list.where((item) {
-        final lok = (item['lokasi'] ?? item['location'] ?? '').toString();
-        return lok == _selectedLokasi;
+        final itemLocId = item['location_id']?.toString().trim() ?? '';
+        final itemLocText = (item['lokasi'] ?? item['location'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        final matchById = targetId.isNotEmpty && itemLocId == targetId;
+        final matchByName = targetName.isNotEmpty && itemLocText == targetName;
+        final matchByDesc = targetDesc.isNotEmpty && itemLocText == targetDesc;
+
+        return matchById || matchByName || matchByDesc;
       }).toList();
     }
 
+    // 3. Filter Pencarian Teks
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((item) {
-        final lokasi = (item['lokasi'] ?? item['location'] ?? '').toString().toLowerCase();
+        final lokasi = (item['lokasi'] ?? item['location'] ?? '')
+            .toString()
+            .toLowerCase();
         final item5s = (item['item_5s'] ?? '').toString().toLowerCase();
-        final deskripsi = (item['description'] ?? item['deskripsi'] ?? '').toString().toLowerCase();
-        final kode = (item['kode_patrol'] ?? item['kode'] ?? '').toString().toLowerCase();
+        final deskripsi = (item['description'] ?? item['deskripsi'] ?? '')
+            .toString()
+            .toLowerCase();
+        final kode = (item['kode_patrol'] ?? item['kode'] ?? '')
+            .toString()
+            .toLowerCase();
         final pelapor = (item['pelapor_nama'] ?? '').toString().toLowerCase();
         return lokasi.contains(q) ||
             item5s.contains(q) ||
@@ -191,6 +256,7 @@ class _PatrolScreenState extends State<PatrolScreen> {
       }).toList();
     }
 
+    // 4. Pengurutan (Sorting)
     list.sort((a, b) {
       final kodeA = (a['kode_patrol'] ?? a['kode'] ?? '').toString();
       final kodeB = (b['kode_patrol'] ?? b['kode'] ?? '').toString();
@@ -200,8 +266,10 @@ class _PatrolScreenState extends State<PatrolScreen> {
       final dateB = DateTime.tryParse(b['created_at'] ?? b['tanggal'] ?? '') ??
           DateTime.now();
 
-      final lokasiA = (a['lokasi'] ?? a['location'] ?? '').toString().toLowerCase();
-      final lokasiB = (b['lokasi'] ?? b['location'] ?? '').toString().toLowerCase();
+      final lokasiA =
+          (a['lokasi'] ?? a['location'] ?? '').toString().toLowerCase();
+      final lokasiB =
+          (b['lokasi'] ?? b['location'] ?? '').toString().toLowerCase();
 
       switch (_selectedSort) {
         case SortOption.terbaru:

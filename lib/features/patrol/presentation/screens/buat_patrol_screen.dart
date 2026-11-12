@@ -513,14 +513,14 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    _buildLabel('Judul Patrol'),
+                    _buildLabel('Team Patroli'),
                     TextFormField(
                       controller: _judulController,
                       style: const TextStyle(fontSize: 14),
                       decoration:
-                          _buildInputDecoration('Masukkan judul patrol'),
+                          _buildInputDecoration('Masukkan team patroli...'),
                       validator: (val) => (val == null || val.trim().isEmpty)
-                          ? 'Judul patrol wajib diisi'
+                          ? 'Team patroli wajib diisi'
                           : null,
                     ),
                     const SizedBox(height: 14),

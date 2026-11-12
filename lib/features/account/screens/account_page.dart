@@ -136,6 +136,7 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  /// PERBAIKAN LOGOUT: Menambahkan async handler, loading indicator & pushNamedAndRemoveUntil ke /login
   void _confirmLogout() {
     showDialog(
       context: context,
@@ -154,8 +155,31 @@ class _AccountPageState extends State<AccountPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () async {
-              Navigator.pop(ctx);
-              await _supabase.auth.signOut();
+              Navigator.pop(ctx); // Tutup dialog
+
+              if (!mounted) return;
+              setState(() => _isLoading = true);
+
+              try {
+                await _supabase.auth.signOut();
+                if (!mounted) return;
+
+                // Navigasi hapus seluruh stack & arahkan ke halaman Login
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/login',
+                  (route) => false,
+                );
+              } catch (e) {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Gagal logout: $e'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Keluar', style: TextStyle(color: Colors.white)),
           ),
@@ -302,87 +326,91 @@ class _AccountPageState extends State<AccountPage> {
                                         ),
                                       ],
                                     ),
-                                    child: Column(
-                                      children: [
-                                        _buildMenuItem(
-                                          icon: Icons.person_outline_rounded,
-                                          title: 'Your Profiles',
-                                          subtitle: 'Lihat dan kelola profil Anda',
-                                          onTap: () async {
-                                            await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const EditProfilesScreen(),
-                                              ),
-                                            );
-                                            _fetchUserData();
-                                          },
-                                        ),
-                                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-                                        _buildMenuItem(
-                                          icon: Icons.lock_outline_rounded,
-                                          title: 'Change Password',
-                                          subtitle: 'Ubah password akun Anda',
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const ChangePasswordScreen(),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-                                        _buildMenuItem(
-                                          icon: Icons.notifications_none_rounded,
-                                          title: 'Notification',
-                                          subtitle: 'Atur preferensi notifikasi',
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const NotificationScreen(),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-                                        _buildMenuItem(
-                                          icon: Icons.info_outline_rounded,
-                                          title: 'About',
-                                          subtitle: 'Informasi tentang aplikasi',
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const AboutAppScreen(),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-                                        _buildMenuItem(
-                                          icon: Icons.help_outline_rounded,
-                                          title: 'Help',
-                                          subtitle: 'Pusat bantuan dan dukungan',
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const HelpAppScreen(),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-                                        _buildMenuItem(
-                                          icon: Icons.logout_rounded,
-                                          title: 'Logout',
-                                          subtitle: 'Keluar dari akun Anda',
-                                          isLogout: true,
-                                          onTap: _confirmLogout,
-                                        ),
-                                      ],
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      borderRadius: BorderRadius.circular(22),
+                                      child: Column(
+                                        children: [
+                                          _buildMenuItem(
+                                            icon: Icons.person_outline_rounded,
+                                            title: 'Your Profiles',
+                                            subtitle: 'Lihat dan kelola profil Anda',
+                                            onTap: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const EditProfilesScreen(),
+                                                ),
+                                              );
+                                              _fetchUserData();
+                                            },
+                                          ),
+                                          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+                                          _buildMenuItem(
+                                            icon: Icons.lock_outline_rounded,
+                                            title: 'Change Password',
+                                            subtitle: 'Ubah password akun Anda',
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const ChangePasswordScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+                                          _buildMenuItem(
+                                            icon: Icons.notifications_none_rounded,
+                                            title: 'Notification',
+                                            subtitle: 'Atur preferensi notifikasi',
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const NotificationScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+                                          _buildMenuItem(
+                                            icon: Icons.info_outline_rounded,
+                                            title: 'About',
+                                            subtitle: 'Informasi tentang aplikasi',
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const AboutAppScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+                                          _buildMenuItem(
+                                            icon: Icons.help_outline_rounded,
+                                            title: 'Help',
+                                            subtitle: 'Pusat bantuan dan dukungan',
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const HelpAppScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+                                          _buildMenuItem(
+                                            icon: Icons.logout_rounded,
+                                            title: 'Logout',
+                                            subtitle: 'Keluar dari akun Anda',
+                                            isLogout: true,
+                                            onTap: _confirmLogout,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
