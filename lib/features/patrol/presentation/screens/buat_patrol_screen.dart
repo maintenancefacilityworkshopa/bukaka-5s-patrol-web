@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/models/patrol_model.dart';
 
 class BuatPatrolScreen extends StatefulWidget {
   final Map<String, dynamic>? editData;
@@ -42,16 +43,16 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
   bool _isLoading = false;
   bool _isLoadingProfile = true;
 
-  final List<String> _item5sList = [
-    'SEIRI - RINGKAS',
-    'SEITON - RAPI',
-    'SEISO - RESIK',
-    'SEIKETSU - RAWAT',
-    'SHITSUKE - RAJIN',
+  final List<String> _item5sList = const [
+    'SORT - RINGKAS',
+    'SET IN ORDER - RAPI',
+    'SHINE - RESIK',
+    'STANDARDIZE - RAWAT',
+    'SUSTAIN - RAJIN',
   ];
 
-  final List<String> _kelasList = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-  final List<String> _statusList = ['OPEN', 'IN PROGRESS', 'CLOSED'];
+  final List<String> _kelasList = const ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  final List<String> _statusList = const ['OPEN', 'IN PROGRESS', 'CLOSED'];
 
   @override
   void initState() {
@@ -142,16 +143,24 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
 
   void _initEditData() {
     final data = widget.editData!;
-    _judulController.text = data['judul']?.toString() ?? data['description']?.toString() ?? '';
+    _judulController.text =
+        data['judul']?.toString() ?? data['description']?.toString() ?? '';
     _namaPembuatController.text = (data['nama_pembuat'] ??
             data['name_maker'] ??
             data['inspektor'] ??
             data['pelapor_nama'] ??
             '')
         .toString();
-    _selectedLokasi = data['lokasi']?.toString() ?? data['location']?.toString();
-    _selected5sItem = data['item_5s']?.toString();
-    _deskripsiController.text = data['deskripsi']?.toString() ?? data['description']?.toString() ?? '';
+    _selectedLokasi =
+        data['lokasi']?.toString() ?? data['location']?.toString();
+
+    final normalized5s =
+        PatrolModel.normalize5sItem(data['item_5s']?.toString());
+    _selected5sItem =
+        _item5sList.contains(normalized5s) ? normalized5s : null;
+
+    _deskripsiController.text =
+        data['deskripsi']?.toString() ?? data['description']?.toString() ?? '';
 
     final rawKelas = (data['kelas_tingkatan'] ?? data['priority_level'] ?? '')
         .toString()
@@ -176,7 +185,8 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
 
     final rawDate = data['created_at'] ?? data['tanggal'];
     if (rawDate != null) {
-      _selectedDate = DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
+      _selectedDate =
+          DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
     }
   }
 
@@ -343,7 +353,8 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sesi login Anda telah berakhir. Silahkan login kembali.'),
+          content:
+              Text('Sesi login Anda telah berakhir. Silahkan login kembali.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -378,7 +389,8 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
           'kelas_tingkatan': _kelasTingkatan,
           'status': dbStatus,
           'started_at': DateTime.now().toIso8601String(),
-          'finished_at': dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
+          'finished_at':
+              dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
           'foto_sebelum_url': urlSebelum,
           'foto_sesudah_url': urlSesudah,
           'created_by': currentUser.id,
@@ -398,7 +410,8 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
           'deskripsi': _deskripsiController.text.trim(),
           'kelas_tingkatan': _kelasTingkatan,
           'status': dbStatus,
-          'finished_at': dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
+          'finished_at':
+              dbStatus == 'CLOSED' ? DateTime.now().toIso8601String() : null,
           'foto_sebelum_url': urlSebelum,
           'foto_sesudah_url': urlSesudah,
         };
@@ -531,12 +544,11 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
                       readOnly: true,
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF374151)),
-                      decoration: _buildInputDecoration('Nama pembuat')
-                          .copyWith(
-                            fillColor: const Color(0xFFF3F4F6),
-                            suffixIcon: const Icon(Icons.lock_outline,
-                                size: 18, color: Colors.grey),
-                          ),
+                      decoration: _buildInputDecoration('Nama pembuat').copyWith(
+                        fillColor: const Color(0xFFF3F4F6),
+                        suffixIcon: const Icon(Icons.lock_outline,
+                            size: 18, color: Colors.grey),
+                      ),
                       validator: (val) => (val == null || val.trim().isEmpty)
                           ? 'Nama pembuat wajib diisi'
                           : null,
@@ -556,19 +568,27 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
                             initialValue: _locationsFromDb.any((loc) {
                               final name = loc['name']?.toString() ?? '';
                               final desc = loc['description']?.toString() ?? '';
-                              return name == _selectedLokasi || desc == _selectedLokasi;
+                              return name == _selectedLokasi ||
+                                  desc == _selectedLokasi;
                             })
-                                ? _locationsFromDb.firstWhere((loc) {
-                                    final name = loc['name']?.toString() ?? '';
-                                    final desc = loc['description']?.toString() ?? '';
-                                    return name == _selectedLokasi || desc == _selectedLokasi;
-                                  })['name']?.toString()
+                                ? _locationsFromDb
+                                    .firstWhere((loc) {
+                                      final name =
+                                          loc['name']?.toString() ?? '';
+                                      final desc =
+                                          loc['description']?.toString() ?? '';
+                                      return name == _selectedLokasi ||
+                                          desc == _selectedLokasi;
+                                    })['name']
+                                    ?.toString()
                                 : null,
-                            decoration: _buildInputDecoration('Pilih lokasi patrol'),
+                            decoration:
+                                _buildInputDecoration('Pilih lokasi patrol'),
                             icon: const Icon(Icons.keyboard_arrow_down_rounded,
                                 color: Colors.black54),
                             items: _locationsFromDb.map((loc) {
-                              final String displayName = (loc['name'] != null && loc['name'].toString().isNotEmpty)
+                              final String displayName = (loc['name'] != null &&
+                                      loc['name'].toString().isNotEmpty)
                                   ? loc['name'].toString()
                                   : loc['description'].toString();
 
@@ -576,34 +596,40 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
                                 value: displayName,
                                 child: Text(
                                   displayName,
-                                  style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+                                  style: const TextStyle(
+                                      fontSize: 14, color: Color(0xFF1F2937)),
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                 ),
                               );
                             }).toList(),
-                            onChanged: (val) => setState(() => _selectedLokasi = val),
-                            validator: (val) =>
-                                val == null ? 'Lokasi patrol wajib dipilih' : null,
+                            onChanged: (val) =>
+                                setState(() => _selectedLokasi = val),
+                            validator: (val) => val == null
+                                ? 'Lokasi patrol wajib dipilih'
+                                : null,
                           ),
                     const SizedBox(height: 14),
 
                     _buildLabel('Tipe 5S Item'),
                     DropdownButtonFormField<String>(
                       isExpanded: true,
-                      initialValue: _selected5sItem,
+                      initialValue: _item5sList.contains(_selected5sItem)
+                          ? _selected5sItem
+                          : null,
                       decoration: _buildInputDecoration('Pilih tipe 5S'),
                       icon: const Icon(Icons.keyboard_arrow_down_rounded,
                           color: Colors.black54),
                       items: _item5sList.map((String item) {
                         return DropdownMenuItem(
-                            value: item,
-                            child: Text(
-                              item,
-                              style: const TextStyle(fontSize: 14),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ));
+                          value: item,
+                          child: Text(
+                            item,
+                            style: const TextStyle(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        );
                       }).toList(),
                       onChanged: (val) =>
                           setState(() => _selected5sItem = val),
@@ -858,9 +884,9 @@ class _BuatPatrolScreenState extends State<BuatPatrolScreen> {
                     borderRadius: BorderRadius.circular(7),
                     child: Image.network(imageUrl, fit: BoxFit.cover),
                   )
-                : Column(
+                : const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.camera_alt_outlined,
                           color: primaryBlue, size: 30),
                       SizedBox(height: 6),

@@ -136,7 +136,6 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  /// PERBAIKAN LOGOUT: Menambahkan async handler, loading indicator & pushNamedAndRemoveUntil ke /login
   void _confirmLogout() {
     showDialog(
       context: context,

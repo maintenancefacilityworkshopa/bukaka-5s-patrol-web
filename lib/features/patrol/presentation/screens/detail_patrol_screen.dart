@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/models/patrol_model.dart';
 import 'buat_patrol_screen.dart';
 
 class DetailPatrolScreen extends StatefulWidget {
@@ -226,16 +227,17 @@ class _DetailPatrolScreenState extends State<DetailPatrolScreen> {
         '-';
     final tanggal =
         _formatTanggal(_currentData['created_at'] ?? _currentData['tanggal']);
-    final item5s = _currentData['item_5s'] ?? '-';
+    final rawItem5s = (_currentData['item_5s'] ?? '-').toString();
+    final item5s =
+        rawItem5s == '-' ? '-' : PatrolModel.normalize5sItem(rawItem5s);
     final judul = _currentData['judul'] ?? _currentData['description'] ?? '-';
     final inspektor = _currentData['name_maker'] ??
         _currentData['nama_pembuat'] ??
         _currentData['pelapor_nama'] ??
         'Pengguna';
     final lokasi = _currentData['lokasi'] ?? _currentData['location'] ?? '-';
-    final deskripsi = _currentData['description'] ??
-        _currentData['deskripsi'] ??
-        '-';
+    final deskripsi =
+        _currentData['description'] ?? _currentData['deskripsi'] ?? '-';
     final priorityTag = _currentData['priority_level'] ??
         _currentData['kelas_tingkatan'] ??
         'LOW';

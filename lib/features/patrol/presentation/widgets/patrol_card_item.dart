@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../data/models/patrol_model.dart';
 import '../screens/detail_patrol_screen.dart';
 
 class PatrolCardItem extends StatefulWidget {
@@ -85,21 +86,25 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
     DateTime dateVal = DateTime.now();
     final rawDate = widget.item['created_at'] ?? widget.item['tanggal'];
     if (rawDate != null) {
-      dateVal = DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
+      dateVal =
+          DateTime.tryParse(rawDate.toString())?.toLocal() ?? DateTime.now();
     }
     final formattedTagDate = DateFormat('dd/MM/yyyy').format(dateVal);
 
     final status = (widget.item['status'] ?? 'OPEN').toString();
     final lokasi = widget.item['lokasi'] ?? widget.item['location'] ?? '-';
-    final item5s = widget.item['item_5s'] ?? widget.item['item5s'] ?? '-';
-    
-    // --- JUDUL PATROL ---
+    final rawItem5s =
+        (widget.item['item_5s'] ?? widget.item['item5s'] ?? '-').toString();
+    final item5s =
+        rawItem5s == '-' ? '-' : PatrolModel.normalize5sItem(rawItem5s);
+
     final judulRaw = widget.item['judul'] ?? widget.item['title'];
     final judul = (judulRaw != null && judulRaw.toString().trim().isNotEmpty)
         ? judulRaw.toString()
         : 'Team Inspeksi 5S';
 
-    final deskripsi = widget.item['description'] ?? widget.item['deskripsi'] ?? '-';
+    final deskripsi =
+        widget.item['description'] ?? widget.item['deskripsi'] ?? '-';
     final kodePatrol = widget.item['kode_patrol'] ??
         widget.item['kode'] ??
         'NP-2026-${widget.indexNumber.toString().padLeft(3, '0')}';
@@ -109,8 +114,7 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
     final statusBgColor = _getStatusBgColor(status);
     final statusLabel = _formatStatusText(status);
 
-    // --- SUBTITLE FORMAT: KODE • LOKASI • ITEM 5S ---
-    final String subheaderText = (item5s != '-' && item5s.toString().isNotEmpty)
+    final String subheaderText = (item5s != '-' && item5s.isNotEmpty)
         ? '$kodePatrol  •  $lokasi  •  $item5s'
         : '$kodePatrol  •  $lokasi';
 
@@ -144,7 +148,6 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // --- KODE PATROL • LOKASI • ITEM 5S ---
                               Text(
                                 subheaderText,
                                 overflow: TextOverflow.ellipsis,
@@ -155,8 +158,6 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              
-                              // --- JUDUL PATROL ---
                               Text(
                                 judul,
                                 overflow: TextOverflow.ellipsis,
@@ -230,7 +231,8 @@ class _PatrolCardItemState extends State<PatrolCardItem> {
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w800,
-                                              color: Color.fromARGB(255, 116, 114, 152),
+                                              color: Color.fromARGB(
+                                                  255, 116, 114, 152),
                                             ),
                                           ),
                                         ),

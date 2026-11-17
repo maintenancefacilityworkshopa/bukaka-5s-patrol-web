@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 class FilterDropdowns extends StatelessWidget {
+  final bool isAdmin;
   final int selectedTab;
   final ValueChanged<int> onTabChanged;
 
   const FilterDropdowns({
     super.key,
+    required this.isAdmin,
     required this.selectedTab,
     required this.onTabChanged,
   });
@@ -26,11 +28,17 @@ class FilterDropdowns extends StatelessWidget {
         ],
       ),
       child: Row(
-        children: [
-          _buildTabItem(0, 'Semua', Icons.grid_view_rounded),
-          _buildTabItem(1, 'In Progress', Icons.pending_actions_rounded),
-          _buildTabItem(2, 'Selesai', Icons.check_circle_outline_rounded),
-        ],
+        children: isAdmin
+            ? [
+                _buildTabItem(0, 'Semua', Icons.grid_view_rounded),
+                _buildTabItem(1, 'Open', Icons.error_outline_rounded),
+                _buildTabItem(2, 'Peringkat', Icons.leaderboard_rounded),
+              ]
+            : [
+                _buildTabItem(0, 'Semua', Icons.grid_view_rounded),
+                _buildTabItem(1, 'In Progress', Icons.pending_actions_rounded),
+                _buildTabItem(2, 'Selesai', Icons.check_circle_outline_rounded),
+              ],
       ),
     );
   }

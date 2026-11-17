@@ -43,6 +43,29 @@ class PatrolModel {
     this.finishedAt,
   });
 
+  static String normalize5sItem(String? rawValue) {
+    if (rawValue == null || rawValue.trim().isEmpty) return '';
+    switch (rawValue.trim().toUpperCase()) {
+      case 'SEIRI - RINGKAS':
+      case 'SORT - RINGKAS':
+        return 'SORT - RINGKAS';
+      case 'SEITON - RAPI':
+      case 'SET IN ORDER - RAPI':
+        return 'SET IN ORDER - RAPI';
+      case 'SEISO - RESIK':
+      case 'SHINE - RESIK':
+        return 'SHINE - RESIK';
+      case 'SEIKETSU - RAWAT':
+      case 'STANDARDIZE - RAWAT':
+        return 'STANDARDIZE - RAWAT';
+      case 'SHITSUKE - RAJIN':
+      case 'SUSTAIN - RAJIN':
+        return 'SUSTAIN - RAJIN';
+      default:
+        return rawValue.trim();
+    }
+  }
+
   factory PatrolModel.fromMap(Map<String, dynamic> map) {
     return PatrolModel(
       id: map['id']?.toString() ?? '',
@@ -55,7 +78,7 @@ class PatrolModel {
       role: map['role']?.toString(),
       locationId: map['location_id']?.toString(),
       lokasi: map['lokasi']?.toString() ?? map['location']?.toString() ?? '',
-      item5s: map['item_5s']?.toString() ?? '',
+      item5s: normalize5sItem(map['item_5s']?.toString()),
       deskripsi: map['deskripsi']?.toString() ?? map['description']?.toString(),
       deskripsiTindakan: map['deskripsi_tindakan']?.toString(),
       priorityLevel: map['priority_level']?.toString() ??

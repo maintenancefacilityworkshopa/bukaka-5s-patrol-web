@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../../data/models/activity_log_model.dart';
 import '../../data/models/activity_stat_model.dart';
 import '../../data/models/completed_patrol_model.dart';
+import '../../data/models/location_ranking_model.dart';
 import '../../data/repositories/activity_repository.dart';
 import '../widgets/card_statistik_activity.dart';
 import '../widgets/filter_dropdowns.dart';
 import '../widgets/isi_in_progress_filter.dart';
+import '../widgets/isi_open_admin_filter.dart';
+import '../widgets/isi_peringkat_location_filter.dart';
 import '../widgets/isi_selesai_filter.dart';
 import '../widgets/isi_semua_filter.dart';
 import '../widgets/month_year_picker_dialog.dart';
@@ -16,12 +19,14 @@ class AktivitasPenggunaScreen extends StatefulWidget {
   const AktivitasPenggunaScreen({super.key});
 
   @override
-  State<AktivitasPenggunaScreen> createState() => _AktivitasPenggunaScreenState();
+  State<AktivitasPenggunaScreen> createState() =>
+      _AktivitasPenggunaScreenState();
 }
 
 class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
   final ActivityRepository _repository = ActivityRepository();
 
+  bool _isAdmin = false;
   int _selectedTab = 0;
   bool _isLoading = true;
 
@@ -29,15 +34,40 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
   int _selectedYear = DateTime.now().year;
   String _selectedTimeFilterText = 'Bulan Ini';
 
+  List<String> _availableLocations = [];
+  String _selectedLocation = 'Semua Lokasi';
+
   ActivityStatModel _stats = ActivityStatModel.empty();
   List<ActivityLogModel> _logsToday = [];
   List<ActivityLogModel> _logsYesterday = [];
   List<CompletedPatrolModel> _completedPatrols = [];
+  List<LocationRankingModel> _locationRankings = [];
 
   @override
   void initState() {
     super.initState();
     _loadActivityData();
+  }
+
+  String _formatFilterButtonLabel() {
+    String timePart;
+    if (_selectedMonth == 0 && _selectedYear == 0) {
+      timePart = 'Semua Waktu';
+    } else if (_selectedMonth == 0) {
+      timePart = 'Tahun $_selectedYear';
+    } else if (_selectedYear == 0) {
+      timePart = 'Bulan $_selectedMonth';
+    } else if (_selectedMonth == DateTime.now().month &&
+        _selectedYear == DateTime.now().year) {
+      timePart = 'Bulan Ini';
+    } else {
+      timePart = '$_selectedMonth/$_selectedYear';
+    }
+
+    if (_selectedLocation == 'Semua Lokasi') {
+      return timePart;
+    }
+    return '$timePart • $_selectedLocation';
   }
 
   Future<void> _showMonthYearPicker() async {
@@ -48,6 +78,8 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
       builder: (context) => MonthYearPickerDialog(
         initialMonth: _selectedMonth,
         initialYear: _selectedYear,
+        locations: _availableLocations,
+        initialLocation: _selectedLocation,
       ),
     );
 
@@ -55,16 +87,8 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
       setState(() {
         _selectedMonth = res['month'] ?? 0;
         _selectedYear = res['year'] ?? 0;
-
-        if (_selectedMonth == 0 && _selectedYear == 0) {
-          _selectedTimeFilterText = 'Semua Waktu';
-        } else if (_selectedMonth == 0) {
-          _selectedTimeFilterText = 'Tahun $_selectedYear';
-        } else if (_selectedYear == 0) {
-          _selectedTimeFilterText = 'Bulan $_selectedMonth';
-        } else {
-          _selectedTimeFilterText = 'Periode ($_selectedMonth/$_selectedYear)';
-        }
+        _selectedLocation = res['location'] ?? 'Semua Lokasi';
+        _selectedTimeFilterText = _formatFilterButtonLabel();
       });
       _loadActivityData();
     }
@@ -76,13 +100,18 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
       final payload = await _repository.fetchActivityData(
         selectedMonth: _selectedMonth,
         selectedYear: _selectedYear,
+        selectedLocation: _selectedLocation,
       );
       if (mounted) {
         setState(() {
+          _isAdmin = payload.isAdmin;
+          _availableLocations = payload.availableLocations;
           _stats = payload.stats;
           _logsToday = payload.logsToday;
           _logsYesterday = payload.logsYesterday;
           _completedPatrols = payload.completedPatrols;
+          _locationRankings = payload.locationRankings;
+          _selectedTimeFilterText = _formatFilterButtonLabel();
           _isLoading = false;
         });
       }
@@ -103,7 +132,7 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // FILTER LOGS SESUAI DENGAN TAB IN PROGRESS
+    // Filter log untuk Tab In Progress (Non-Admin)
     final List<ActivityLogModel> inProgressLogs = _logsToday.where((item) {
       final st = item.status.toUpperCase();
       return st == 'IN PROGRESS' ||
@@ -111,6 +140,12 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
           st == 'PROSES' ||
           st == 'OPEN' ||
           st == 'PENDING';
+    }).toList();
+
+    // Filter log khusus status OPEN untuk Tab Open (Admin)
+    final List<ActivityLogModel> openOnlyLogs = _logsToday.where((item) {
+      final st = item.status.toUpperCase();
+      return st == 'OPEN' || st == 'PENDING';
     }).toList();
 
     return Scaffold(
@@ -136,7 +171,7 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Pantau seluruh aktivitas Anda',
+                      'Pantau seluruh aktivitas patrol',
                       style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                     ),
                   ],
@@ -146,7 +181,8 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF2563EB)),
                     )
                   : RefreshIndicator(
                       onRefresh: _loadActivityData,
@@ -155,6 +191,7 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Column(
                           children: [
+                            // 1. Card Ringkasan Statistik + Tombol Filter Terpadu (Periode & Locations)
                             CardStatistikActivity(
                               totalPatrol: _stats.total,
                               selesai: _stats.selesai,
@@ -163,8 +200,11 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                               selectedTimeFilter: _selectedTimeFilterText,
                               onTapFilter: _showMonthYearPicker,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
+
+                            // 2. Tab Role-Based (Admin vs Non-Admin)
                             FilterDropdowns(
+                              isAdmin: _isAdmin,
                               selectedTab: _selectedTab,
                               onTabChanged: (index) {
                                 setState(() => _selectedTab = index);
@@ -172,24 +212,49 @@ class _AktivitasPenggunaScreenState extends State<AktivitasPenggunaScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // TAB SELEKSI
-                            if (_selectedTab == 0)
-                              IsiSemuaFilter(
-                                logsToday: _logsToday,
-                                logsYesterday: _logsYesterday,
-                                onItemTap: (data) => _navigateToDetail(data),
-                              )
-                            else if (_selectedTab == 1)
-                              IsiInProgressFilter(
-                                inProgressLogs: inProgressLogs,
-                                onItemTap: (data) => _navigateToDetail(data),
-                              )
-                            else
-                              IsiSelesaiFilter(
-                                completedPatrols: _completedPatrols,
-                                onItemTap: (data) => _navigateToDetail(data),
-                              ),
-                            const SizedBox(height: 24),
+                            // 3. Konten Berdasarkan POV Role & Tab Aktif
+                            if (_isAdmin) ...[
+                              if (_selectedTab == 0)
+                                IsiSemuaFilter(
+                                  logsToday: _logsToday,
+                                  logsYesterday: _logsYesterday,
+                                  onItemTap: (data) => _navigateToDetail(data),
+                                )
+                              else if (_selectedTab == 1)
+                                IsiOpenAdminFilter(
+                                  openLogs: openOnlyLogs,
+                                  onItemTap: (data) => _navigateToDetail(data),
+                                )
+                              else
+                                IsiPeringkatLocationFilter(
+                                  rankings: _locationRankings,
+                                  onLocationTap: (locName) {
+                                    setState(() {
+                                      _selectedLocation = locName;
+                                      _selectedTab = 0;
+                                    });
+                                    _loadActivityData();
+                                  },
+                                ),
+                            ] else ...[
+                              if (_selectedTab == 0)
+                                IsiSemuaFilter(
+                                  logsToday: _logsToday,
+                                  logsYesterday: _logsYesterday,
+                                  onItemTap: (data) => _navigateToDetail(data),
+                                )
+                              else if (_selectedTab == 1)
+                                IsiInProgressFilter(
+                                  inProgressLogs: inProgressLogs,
+                                  onItemTap: (data) => _navigateToDetail(data),
+                                )
+                              else
+                                IsiSelesaiFilter(
+                                  completedPatrols: _completedPatrols,
+                                  onItemTap: (data) => _navigateToDetail(data),
+                                ),
+                            ],
+                            const SizedBox(height: 90),
                           ],
                         ),
                       ),

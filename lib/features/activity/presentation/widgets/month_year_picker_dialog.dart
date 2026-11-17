@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 class MonthYearPickerDialog extends StatefulWidget {
   final int initialMonth;
   final int initialYear;
+  final List<String> locations;
+  final String initialLocation;
 
   const MonthYearPickerDialog({
     super.key,
     required this.initialMonth,
     required this.initialYear,
+    required this.locations,
+    required this.initialLocation,
   });
 
   @override
@@ -17,6 +21,7 @@ class MonthYearPickerDialog extends StatefulWidget {
 class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
   late int selectedMonth;
   late int selectedYear;
+  late String selectedLocation;
 
   final List<String> months = [
     'Semua', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -24,12 +29,18 @@ class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
   ];
 
   late List<int> years;
+  late List<String> locationOptions;
 
   @override
   void initState() {
     super.initState();
     selectedMonth = widget.initialMonth;
     selectedYear = widget.initialYear;
+
+    locationOptions = ['Semua Lokasi', ...widget.locations];
+    selectedLocation = locationOptions.contains(widget.initialLocation)
+        ? widget.initialLocation
+        : 'Semua Lokasi';
 
     final currentYr = DateTime.now().year;
     years = [0]; // 0 = Semua Tahun
@@ -62,7 +73,7 @@ class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Pilih Periode Activity',
+                'Fitur Filter Activity',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -83,21 +94,32 @@ class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('BULAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'BULAN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       initialValue: selectedMonth,
                       decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       items: List.generate(months.length, (index) {
                         return DropdownMenuItem(
                           value: index,
-                          child: Text(months[index], style: const TextStyle(fontSize: 13)),
+                          child: Text(months[index],
+                              style: const TextStyle(fontSize: 13)),
                         );
                       }),
-                      onChanged: (val) => setState(() => selectedMonth = val ?? 0),
+                      onChanged: (val) =>
+                          setState(() => selectedMonth = val ?? 0),
                     ),
                   ],
                 ),
@@ -108,24 +130,75 @@ class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('TAHUN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      'TAHUN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
-                      initialValue: years.contains(selectedYear) ? selectedYear : 0,
+                      initialValue:
+                          years.contains(selectedYear) ? selectedYear : 0,
                       decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       items: years.map((yr) {
                         return DropdownMenuItem(
                           value: yr,
-                          child: Text(yr == 0 ? 'Semua' : '$yr', style: const TextStyle(fontSize: 13)),
+                          child: Text(yr == 0 ? 'Semua' : '$yr',
+                              style: const TextStyle(fontSize: 13)),
                         );
                       }).toList(),
-                      onChanged: (val) => setState(() => selectedYear = val ?? 0),
+                      onChanged: (val) =>
+                          setState(() => selectedYear = val ?? 0),
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Dropdown Locations
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'LOCATIONS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedLocation,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                items: locationOptions.map((loc) {
+                  return DropdownMenuItem<String>(
+                    value: loc,
+                    child: Text(
+                      loc,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (val) =>
+                    setState(() => selectedLocation = val ?? 'Semua Lokasi'),
               ),
             ],
           ),
@@ -136,15 +209,21 @@ class _MonthYearPickerDialogState extends State<MonthYearPickerDialog> {
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
                 Navigator.pop(context, {
                   'month': selectedMonth,
                   'year': selectedYear,
+                  'location': selectedLocation,
                 });
               },
-              child: const Text('Terapkan Filter', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Terapkan Filter',
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

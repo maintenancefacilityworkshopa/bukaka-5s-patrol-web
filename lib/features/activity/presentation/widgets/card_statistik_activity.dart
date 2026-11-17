@@ -56,7 +56,7 @@ class CardStatistikActivity extends StatelessWidget {
                   ),
                   SizedBox(height: 2),
                   Text(
-                    'Statistik patrol Anda saat ini',
+                    'Berikut Data Statistik Patrol',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.white70,
